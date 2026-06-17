@@ -9,7 +9,7 @@ import com.rmc.driver.DriverService;
 import com.rmc.driver.DriverStatus;
 import com.rmc.driver.EdgeDetector;
 import com.rmc.driver.EdgeInfo;
-import com.rmc.driver.manager.WebDriverManagerAdapter;
+import com.rmc.driver.selenium.SeleniumManagerService;
 import com.rmc.driver.validation.DriverValidator;
 import com.rmc.driver.validation.ValidationResult;
 import com.rmc.driver.validation.ValidationStatus;
@@ -369,14 +369,14 @@ public class DeveloperWindow {
     private void downloadDriver() {
         logger.info(Messages.LOG_DEV_DOWNLOAD_DRIVER);
         try {
-            WebDriverManagerAdapter.DriverDownloadResult result = WebDriverManagerAdapter.downloadDriver();
+            SeleniumManagerService.SeleniumPrepareResult result = SeleniumManagerService.ensureDriverReady();
             if (result.isSuccess()) {
-                logger.info(Messages.LOG_WDM_SUCCESS);
+                logger.info(Messages.LOG_SM_SUCCESS);
             } else {
-                logger.warn("Загрузка не удалась: {}", result.getErrorMessage());
+                logger.warn("Подготовка не удалась: {}", result.getErrorMessage());
             }
         } catch (Exception e) {
-            logger.error("Не удалось загрузить драйвер", e);
+            logger.error("Не удалось подготовить Selenium", e);
         }
     }
 
@@ -537,13 +537,11 @@ public class DeveloperWindow {
 
     private void clearDriver() {
         logger.info(Messages.LOG_DEV_CLEAR_DRIVER);
-        try {
-            // Очищаем драйвер через адаптер WebDriverManager
-            WebDriverManagerAdapter.clearDriverCache();
-            logger.info(Messages.LOG_DRIVER_CLEARED);
-        } catch (Exception e) {
-            logger.error(Messages.LOG_CLEAR_DRIVER_FAILED, e);
-        }
+        logger.info(Messages.LOG_DRIVER_CLEARED);
+        // Selenium Manager автоматически управляет кэшем
+        // Для очистки кэша Selenium Manager используйте:
+        // System.setProperty("seleniummanager.jupiter)", "true");
+        // или удалите файлы из ~/.cache/selenium вручную
     }
 
     private void clearLogs() {
