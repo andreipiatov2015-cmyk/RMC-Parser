@@ -5,6 +5,7 @@ import com.rmc.filters.parser.FilterOption;
 import com.rmc.filters.parser.FilterType;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -74,7 +75,7 @@ public class FilterBinder {
         
         if (control instanceof ListView<?> listView) {
             // Для ListView возвращаем значения выбранных элементов через запятую
-            List<String> selectedItems = listView.getSelectionModel().getSelectedItems();
+            var selectedItems = listView.getSelectionModel().getSelectedItems();
             if (selectedItems.isEmpty()) {
                 return null;
             }
@@ -84,14 +85,15 @@ public class FilterBinder {
                 @SuppressWarnings("unchecked")
                 Map<String, String> labelToValue = (Map<String, String>) arr[1];
                 List<String> values = new ArrayList<>();
-                for (String label : selectedItems) {
+                for (Object item : selectedItems) {
+                    String label = item.toString();
                     String value = labelToValue.get(label);
                     values.add(value != null ? value : label);
                 }
                 return String.join(",", values);
             }
             
-            return String.join(",", selectedItems);
+            return String.join(",", selectedItems.stream().map(Object::toString).toList());
         }
         
         if (control instanceof VBox vBox) {
@@ -179,7 +181,14 @@ public class FilterBinder {
         
         if (control instanceof ComboBox<?> comboBox) {
             if (value != null) {
-                comboBox.getSelectionModel().select(value);
+                // Try to find matching item by string
+                for (int i = 0; i < comboBox.getItems().size(); i++) {
+                    Object item = comboBox.getItems().get(i);
+                    if (value.equals(item.toString())) {
+                        comboBox.getSelectionModel().select(i);
+                        break;
+                    }
+                }
             }
             return;
         }

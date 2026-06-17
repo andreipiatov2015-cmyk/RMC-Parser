@@ -151,7 +151,7 @@ public class ProgramParser {
      */
     private static Program parseProgramCard(Element card) {
         try {
-            Builder builder = Program.builder();
+            Program.Builder builder = Program.builder();
             
             // ID программы
             String id = extractId(card);
