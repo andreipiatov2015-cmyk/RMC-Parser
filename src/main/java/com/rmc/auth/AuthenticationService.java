@@ -61,7 +61,7 @@ public class AuthenticationService {
             
             // Выполняем POST запрос
             HttpResponse response = httpClient.post(
-                loginRequest.getLoginUrl(),
+                loginRequest.getLoginUrl().toString(),
                 body,
                 loginRequest.getContentType()
             );

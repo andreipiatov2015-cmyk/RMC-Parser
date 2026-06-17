@@ -4,6 +4,7 @@ import com.rmc.auth.AuthenticationService;
 import com.rmc.auth.LoginRequest;
 import com.rmc.auth.LoginResult;
 import com.rmc.filters.loader.FilterPageLoader;
+import com.rmc.filters.loader.FilterPageResult;
 import com.rmc.filters.parser.FilterParser;
 import com.rmc.http.HttpClientService;
 import com.rmc.logging.AppLogger;
@@ -25,7 +26,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.slf4j.Logger;
 
-import java.net.CookieManager;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -268,10 +268,8 @@ public class MainTabController {
         log("Пользователь: " + username);
         
         try {
-            // Создаём HTTP клиент с cookie manager
-            CookieManager cookieManager = new CookieManager();
+            // Создаём HTTP клиент
             httpClient = HttpClientService.builder()
-                    .cookieManager(cookieManager)
                     .requestTimeout(Duration.ofSeconds(30))
                     .build();
             
@@ -337,7 +335,7 @@ public class MainTabController {
                     .baseUrl("https://rmc.example.com")
                     .build();
             
-            FilterPageLoader.FilterPageResult result = loader.load();
+            FilterPageResult result = loader.load();
             
             if (result.isSuccess()) {
                 String html = result.getHtml();

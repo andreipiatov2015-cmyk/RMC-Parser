@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
@@ -86,8 +85,8 @@ public class HttpClientService {
                 logger.debug("GET Request: {}", uri);
             }
             
-            HttpResponse<String> response = sessionManager.getHttpClient()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
+            java.net.http.HttpResponse<String> response = sessionManager.getHttpClient()
+                    .send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
             
             Duration duration = Duration.between(start, Instant.now());
             
@@ -112,8 +111,7 @@ public class HttpClientService {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.error(Messages.LOG_HTTP_INTERRUPTED, uri);
-            throw new HttpException("Request interrupted", e, 
-                    HttpException.ErrorType.UNKNOWN, uri, "GET", null, null);
+            throw HttpException.sslError(uri, "GET", e);
         }
     }
     
@@ -150,6 +148,10 @@ public class HttpClientService {
      * @return HttpResponse с ответом
      * @throws HttpException если запрос неуспешен
      */
+    public HttpResponse post(String uri, String body, String contentType) {
+        return post(URI.create(uri), body, contentType);
+    }
+    
     public HttpResponse post(URI uri, String body, String contentType) {
         logger.info(Messages.LOG_HTTP_POST, uri);
         
@@ -169,8 +171,8 @@ public class HttpClientService {
                         : body);
             }
             
-            HttpResponse<String> response = sessionManager.getHttpClient()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
+            java.net.http.HttpResponse<String> response = sessionManager.getHttpClient()
+                    .send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
             
             Duration duration = Duration.between(start, Instant.now());
             
@@ -195,8 +197,7 @@ public class HttpClientService {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.error(Messages.LOG_HTTP_INTERRUPTED, uri);
-            throw new HttpException("Request interrupted", e, 
-                    HttpException.ErrorType.UNKNOWN, uri, "POST", null, null);
+            throw HttpException.sslError(uri, "POST", e);
         }
     }
     
@@ -227,7 +228,7 @@ public class HttpClientService {
                     .build();
             
             return sessionManager.getHttpClient()
-                    .sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .sendAsync(request, java.net.http.HttpResponse.BodyHandlers.ofString())
                     .thenApply(response -> {
                         Duration duration = Duration.between(
                                 Instant.now().minusMillis(100), // approximate
@@ -236,11 +237,10 @@ public class HttpClientService {
                     })
                     .exceptionally(e -> {
                         if (e.getCause() instanceof java.net.http.HttpTimeoutException) {
-                            throw new HttpException("Request timed out", e.getCause(),
-                                    HttpException.ErrorType.TIMEOUT, uri, "GET", null, null);
+                            throw HttpException.timeout(uri, "GET", e.getCause());
                         }
-                        throw new HttpException("Request failed", e.getCause(),
-                                HttpException.ErrorType.UNKNOWN, uri, "GET", null, null);
+                        throw HttpException.connectionFailed(uri, "GET", 
+                                e.getCause() != null ? e.getCause() : new Exception(e.getMessage()));
                     });
                     
         } catch (Exception e) {
@@ -290,7 +290,7 @@ public class HttpClientService {
                     .build();
             
             return sessionManager.getHttpClient()
-                    .sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .sendAsync(request, java.net.http.HttpResponse.BodyHandlers.ofString())
                     .thenApply(response -> {
                         Duration duration = Duration.between(
                                 Instant.now().minusMillis(100), // approximate
@@ -299,11 +299,10 @@ public class HttpClientService {
                     })
                     .exceptionally(e -> {
                         if (e.getCause() instanceof java.net.http.HttpTimeoutException) {
-                            throw new HttpException("Request timed out", e.getCause(),
-                                    HttpException.ErrorType.TIMEOUT, uri, "POST", null, null);
+                            throw HttpException.timeout(uri, "POST", e.getCause());
                         }
-                        throw new HttpException("Request failed", e.getCause(),
-                                HttpException.ErrorType.UNKNOWN, uri, "POST", null, null);
+                        throw HttpException.connectionFailed(uri, "POST",
+                                e.getCause() != null ? e.getCause() : new Exception(e.getMessage()));
                     });
                     
         } catch (Exception e) {
@@ -333,7 +332,7 @@ public class HttpClientService {
         logger.info(Messages.LOG_HTTP_COOKIES_CLEARED);
     }
     
-    private HttpResponse buildResponse(HttpResponse<String> response, URI uri, 
+    private com.rmc.http.HttpResponse buildResponse(java.net.http.HttpResponse<String> response, URI uri, 
                                        String method, Duration duration) {
         Map<String, String> headers = response.headers().map()
                 .entrySet().stream()
@@ -342,7 +341,7 @@ public class HttpClientService {
                         e -> String.join(", ", e.getValue())
                 ));
         
-        return HttpResponse.builder()
+        return com.rmc.http.HttpResponse.builder()
                 .statusCode(response.statusCode())
                 .body(response.body())
                 .headers(headers)
