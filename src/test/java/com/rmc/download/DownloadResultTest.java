@@ -114,4 +114,14 @@ class DownloadResultTest {
         assertTrue(str.contains("success=false"));
         assertTrue(str.contains("error"));
     }
+
+    @Test
+    void testResolverError() {
+        DownloadResult result = DownloadResult.resolverError("INVALID_VERSION", "Invalid version format");
+        
+        assertFalse(result.isSuccess());
+        assertEquals(DownloadResult.ErrorType.RESOLVER_ERROR, result.getErrorType());
+        assertTrue(result.getErrorMessage().contains("INVALID_VERSION"));
+        assertTrue(result.getErrorMessage().contains("Resolver error"));
+    }
 }
