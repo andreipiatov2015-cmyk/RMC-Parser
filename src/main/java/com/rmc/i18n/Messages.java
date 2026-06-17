@@ -241,6 +241,12 @@ public class Messages {
     public static final String LOG_WDM_UPDATE_START = "Обновление драйвера...";
     public static final String LOG_WDM_UPDATE_COMPLETE = "Обновление завершено.";
     
+    // ==================== Selenium Manager (альтернатива WebDriverManager) ====================
+    // Примечание: Selenium Manager теперь поставляется с Selenium 4.6+
+    // Для полного перехода на Selenium Manager можно использовать:
+    // io.github.bonigarcia.wdm.SeleniumManager.getInstance().execDriverManager(...)
+    // Но WebDriverManager обеспечивает лучшую поддержку для Microsoft Edge
+    
     // ==================== Диагностический отчёт ====================
     
     public static final String LOG_REPORT_COPIED = "Отчёт скопирован в буфер обмена";
