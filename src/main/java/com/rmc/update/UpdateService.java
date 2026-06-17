@@ -5,7 +5,9 @@ import com.rmc.logging.AppLogger;
 import com.rmc.model.UpdateCheckResult;
 import org.slf4j.Logger;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.net.URL;
@@ -22,17 +24,14 @@ public class UpdateService {
         logger.info("Update Service");
         logger.info("=================================================");
 
+        long startTime = System.currentTimeMillis();
+
         try {
             UpdateConfig config = UpdateConfig.load();
             logger.info("Loading configuration...");
-            logger.info("Repository Owner: {}", config.getOwner());
-            logger.info("Repository Name: {}", config.getRepo());
-            logger.info("API URL: {}", config.getApiUrl());
+            logger.info("JSON URL: {}", config.getJsonUrl());
 
-            String apiUrl = buildApiUrl(config);
-            logger.info("Connecting...");
-
-            return connectToGitHub(apiUrl, config);
+            return downloadLatestJson(config.getJsonUrl(), startTime);
 
         } catch (IOException e) {
             logger.error("Failed to load configuration", e);
@@ -40,14 +39,12 @@ public class UpdateService {
         }
     }
 
-    private String buildApiUrl(UpdateConfig config) {
-        return config.getApiUrl() + "/repos/" + config.getOwner() + "/" + config.getRepo();
-    }
-
-    private UpdateCheckResult connectToGitHub(String apiUrl, UpdateConfig config) {
+    private UpdateCheckResult downloadLatestJson(String jsonUrl, long startTime) {
         HttpURLConnection connection = null;
         try {
-            URL url = new URL(apiUrl);
+            URL url = new URL(jsonUrl);
+            logger.info("Connecting to: {}", jsonUrl);
+            
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(CONNECT_TIMEOUT);
@@ -56,19 +53,18 @@ public class UpdateService {
 
             int httpStatus = connection.getResponseCode();
             long responseLength = connection.getContentLengthLong();
+            long downloadTime = System.currentTimeMillis() - startTime;
 
             logger.info("HTTP Status: {}", httpStatus);
-            logger.info("Response Length: {}", responseLength);
+            logger.info("Response Length: {} bytes", responseLength);
+            logger.info("Download Time: {} ms", downloadTime);
 
             if (httpStatus == 200) {
                 logger.info("Connection successful");
-            } else if (httpStatus == 404) {
-                logger.warn("Repository not found");
-                logger.warn("Repository: {}/{}", config.getOwner(), config.getRepo());
-                logger.warn("API URL: {}", apiUrl);
-                logger.warn("HTTP Status: {}", httpStatus);
-                String responseBody = readResponseBody(connection);
-                logger.warn("Response Body: {}", responseBody);
+                String jsonContent = readResponseBody(connection);
+                logger.info("JSON Content:");
+                logger.info(jsonContent);
+                logger.info("JSON downloaded successfully");
             } else {
                 String responseBody = readResponseBody(connection);
                 logger.warn("Unexpected HTTP Status: {}", httpStatus);
@@ -106,7 +102,15 @@ public class UpdateService {
             if (stream == null) {
                 return "No content";
             }
-            return new String(stream.readAllBytes());
+            
+            StringBuilder content = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    content.append(line);
+                }
+            }
+            return content.toString();
         } catch (IOException e) {
             logger.warn("Could not read response body", e);
             return "Unable to read response body";
