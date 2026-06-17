@@ -14,6 +14,7 @@ import com.rmc.driver.EdgeInfo;
 import com.rmc.driver.validation.DriverValidator;
 import com.rmc.driver.validation.ValidationResult;
 import com.rmc.driver.validation.ValidationStatus;
+import com.rmc.i18n.Messages;
 import com.rmc.logging.AppLogger;
 import com.rmc.logging.ui.UiLogAppender;
 import com.rmc.update.UpdateService;
@@ -62,7 +63,7 @@ public class DeveloperWindow {
 
     private void createWindow() {
         stage = new Stage();
-        stage.setTitle("RMC Framework - Developer Diagnostics");
+        stage.setTitle(Messages.APP_TITLE + " - " + Messages.BTN_DEVELOPER_DIAGNOSTICS);
         stage.setWidth(900);
         stage.setHeight(700);
         stage.setMinWidth(700);
@@ -78,15 +79,15 @@ public class DeveloperWindow {
         Scene scene = new Scene(tabPane);
         stage.setScene(scene);
 
-        // Attach log appender
+        // Прикрепляем appender логов
         Platform.runLater(() -> {
             UiLogAppender.attach(logConsole);
-            logger.info("Developer Diagnostics Window opened");
+            logger.info(Messages.LOG_DEV_WINDOW_OPEN);
         });
     }
 
     private Tab createDiagnosticsTab() {
-        Tab tab = new Tab("Diagnostics");
+        Tab tab = new Tab(Messages.TAB_DIAGNOSTICS);
         tab.setClosable(false);
 
         BorderPane root = new BorderPane();
@@ -103,16 +104,16 @@ public class DeveloperWindow {
         hbox.setPadding(new Insets(10));
         hbox.setStyle("-fx-background-color: #f5f5f5;");
 
-        Button btnCheckUpdates = createButton("Check Updates", e -> checkUpdates());
-        Button btnCheckDriver = createButton("Check Driver", e -> checkDriver());
-        Button btnDownloadDriver = createButton("Download Driver", e -> downloadDriver());
-        Button btnValidateDriver = createButton("Validate Driver", e -> validateDriver());
-        Button btnRunStartup = createButton("Run Startup Sequence", e -> runStartupSequence());
-        Button btnDiagnosticReport = createButton("Create Diagnostic Report", e -> createDiagnosticReport());
-        Button btnOpenLogFolder = createButton("Open Log Folder", e -> openLogFolder());
-        Button btnClearDriver = createButton("Clear Driver", e -> clearDriver());
-        Button btnClearLogs = createButton("Clear Logs", e -> clearLogs());
-        Button btnExit = createButton("Exit", e -> exit());
+        Button btnCheckUpdates = createButton(Messages.BTN_CHECK_UPDATES_LONG, e -> checkUpdates());
+        Button btnCheckDriver = createButton(Messages.BTN_CHECK_DRIVER, e -> checkDriver());
+        Button btnDownloadDriver = createButton(Messages.BTN_DOWNLOAD_DRIVER, e -> downloadDriver());
+        Button btnValidateDriver = createButton(Messages.BTN_VALIDATE_DRIVER, e -> validateDriver());
+        Button btnRunStartup = createButton(Messages.BTN_RUN_STARTUP, e -> runStartupSequence());
+        Button btnDiagnosticReport = createButton(Messages.BTN_CREATE_REPORT, e -> createDiagnosticReport());
+        Button btnOpenLogFolder = createButton(Messages.BTN_OPEN_LOG_FOLDER, e -> openLogFolder());
+        Button btnClearDriver = createButton(Messages.BTN_CLEAR_DRIVER, e -> clearDriver());
+        Button btnClearLogs = createButton(Messages.BTN_CLEAR_LOGS, e -> clearLogs());
+        Button btnExit = createButton(Messages.BTN_EXIT, e -> exit());
 
         hbox.getChildren().addAll(
                 btnCheckUpdates, btnCheckDriver, btnDownloadDriver, btnValidateDriver,
@@ -128,8 +129,8 @@ public class DeveloperWindow {
     private Button createButton(String text, javafx.event.EventHandler<javafx.event.ActionEvent> handler) {
         Button button = new Button(text);
         button.setOnAction(handler);
-        button.setPrefWidth(130);
-        button.setMaxWidth(130);
+        button.setPrefWidth(150);
+        button.setMaxWidth(150);
         return button;
     }
 
@@ -152,18 +153,18 @@ public class DeveloperWindow {
         hbox.setStyle("-fx-background-color: #e0e0e0;");
         hbox.setAlignment(Pos.CENTER_LEFT);
 
-        applicationStatus = new Label("Status: Not Initialized");
+        applicationStatus = new Label(Messages.STATUS_NOT_INITIALIZED);
         applicationStatus.setStyle("-fx-font-weight: bold;");
 
         Label separator = new Label("|");
         
-        statusConfig = createStatusLabel("Config");
-        statusLogging = createStatusLabel("Logging");
-        statusVersion = createStatusLabel("Version");
-        statusUpdate = createStatusLabel("Update");
-        statusDriver = createStatusLabel("Driver");
-        statusValidation = createStatusLabel("Validation");
-        statusInternet = createStatusLabel("Internet");
+        statusConfig = createStatusLabel(Messages.STATUS_CONFIG);
+        statusLogging = createStatusLabel(Messages.STATUS_LOGGING);
+        statusVersion = createStatusLabel(Messages.STATUS_VERSION);
+        statusUpdate = createStatusLabel(Messages.STATUS_UPDATE);
+        statusDriver = createStatusLabel(Messages.STATUS_DRIVER);
+        statusValidation = createStatusLabel(Messages.STATUS_VALIDATION);
+        statusInternet = createStatusLabel(Messages.STATUS_INTERNET);
 
         hbox.getChildren().addAll(
                 applicationStatus, separator,
@@ -182,17 +183,18 @@ public class DeveloperWindow {
 
     private void updateStatus(Label label, String status, boolean isOk) {
         String color = isOk ? "#4CAF50" : "#F44336";
-        label.setText(status + ": " + (isOk ? "OK" : "ERROR"));
+        String statusText = isOk ? Messages.STATUS_OK : Messages.STATUS_ERROR;
+        label.setText(status + ": " + statusText);
         label.setStyle("-fx-font-size: 11; -fx-text-fill: " + color + "; -fx-font-weight: bold;");
     }
 
     private void updateStatusWarning(Label label, String status) {
-        label.setText(status + ": WARNING");
+        label.setText(status + ": " + Messages.STATUS_WARNING);
         label.setStyle("-fx-font-size: 11; -fx-text-fill: #FF9800; -fx-font-weight: bold;");
     }
 
     private Tab createEnvironmentTab() {
-        Tab tab = new Tab("Environment");
+        Tab tab = new Tab(Messages.TAB_ENVIRONMENT);
         tab.setClosable(false);
 
         environmentInfo = new TextArea();
@@ -204,7 +206,7 @@ public class DeveloperWindow {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10));
         
-        Button btnRefresh = new Button("Refresh Environment Info");
+        Button btnRefresh = new Button(Messages.BTN_REFRESH_ENV);
         btnRefresh.setOnAction(e -> refreshEnvironmentInfo());
         
         vbox.getChildren().addAll(btnRefresh, environmentInfo);
@@ -215,23 +217,23 @@ public class DeveloperWindow {
     }
 
     private Tab createAboutTab() {
-        Tab tab = new Tab("About");
+        Tab tab = new Tab(Messages.TAB_ABOUT);
         tab.setClosable(false);
 
         VBox vbox = new VBox(20);
         vbox.setPadding(new Insets(30));
         vbox.setAlignment(Pos.CENTER);
 
-        Label title = new Label("RMC Framework");
+        Label title = new Label(Messages.ABOUT_TITLE);
         title.setStyle("-fx-font-size: 24; -fx-font-weight: bold;");
 
-        Label versionLabel = new Label("Version: " + VersionService.getCurrentVersionString());
+        Label versionLabel = new Label(Messages.VERSION_PREFIX + ": " + VersionService.getCurrentVersionString());
         versionLabel.setStyle("-fx-font-size: 14;");
 
-        Label desc = new Label("Microsoft Edge WebDriver Management Framework");
+        Label desc = new Label(Messages.ABOUT_DESCRIPTION);
         desc.setStyle("-fx-font-size: 12; -fx-text-fill: #666666;");
 
-        Label copyright = new Label("Developer Diagnostics Mode");
+        Label copyright = new Label(Messages.ABOUT_MODE);
         copyright.setStyle("-fx-font-size: 11; -fx-text-fill: #999999;");
 
         vbox.getChildren().addAll(title, versionLabel, desc, copyright);
@@ -243,70 +245,70 @@ public class DeveloperWindow {
     private void refreshEnvironmentInfo() {
         StringBuilder sb = new StringBuilder();
         
-        // Java Info
-        sb.append("=== Java Environment ===\n");
+        // Информация о Java
+        sb.append(Messages.ENV_JAVA).append("\n");
         sb.append("Java Version: ").append(System.getProperty("java.version")).append("\n");
         sb.append("Java Vendor: ").append(System.getProperty("java.vendor")).append("\n");
         sb.append("Java Home: ").append(System.getProperty("java.home")).append("\n");
         sb.append("Java Arch: ").append(System.getProperty("os.arch")).append("\n");
         
-        // OS Info
-        sb.append("\n=== Operating System ===\n");
-        sb.append("OS Name: ").append(System.getProperty("os.name")).append("\n");
-        sb.append("OS Version: ").append(System.getProperty("os.version")).append("\n");
-        sb.append("OS Arch: ").append(System.getProperty("os.arch")).append("\n");
+        // Информация об ОС
+        sb.append("\n").append(Messages.ENV_OS).append("\n");
+        sb.append("Название ОС: ").append(System.getProperty("os.name")).append("\n");
+        sb.append("Версия ОС: ").append(System.getProperty("os.version")).append("\n");
+        sb.append("Архитектура ОС: ").append(System.getProperty("os.arch")).append("\n");
         
-        // User Info
-        sb.append("\n=== User Environment ===\n");
-        sb.append("User Name: ").append(System.getProperty("user.name")).append("\n");
-        sb.append("User Home: ").append(System.getProperty("user.home")).append("\n");
-        sb.append("User Dir: ").append(System.getProperty("user.dir")).append("\n");
+        // Информация о пользователе
+        sb.append("\n").append(Messages.ENV_USER).append("\n");
+        sb.append("Имя пользователя: ").append(System.getProperty("user.name")).append("\n");
+        sb.append("Домашняя папка: ").append(System.getProperty("user.home")).append("\n");
+        sb.append("Рабочая папка: ").append(System.getProperty("user.dir")).append("\n");
         sb.append("Local AppData: ").append(System.getenv("LOCALAPPDATA")).append("\n");
         
-        // Application Info
-        sb.append("\n=== Application ===\n");
-        sb.append("Application Version: ").append(VersionService.getCurrentVersionString()).append("\n");
+        // Информация о приложении
+        sb.append("\n").append(Messages.ENV_APPLICATION).append("\n");
+        sb.append("Версия приложения: ").append(VersionService.getCurrentVersionString()).append("\n");
         
         try {
             UpdateConfig config = UpdateConfig.load();
             sb.append("JSON URL: ").append(config.getJsonUrl()).append("\n");
-            sb.append("Update Channel: ").append(config.getChannel()).append("\n");
+            sb.append("Канал обновлений: ").append(config.getChannel()).append("\n");
         } catch (Exception e) {
-            sb.append("Configuration: Error loading\n");
+            sb.append(Messages.ENV_CONFIG_ERROR).append("\n");
         }
         
-        // Edge Info
-        sb.append("\n=== Microsoft Edge ===\n");
+        // Информация о Edge
+        sb.append("\n").append(Messages.ENV_EDGE).append("\n");
         EdgeInfo edgeInfo = EdgeDetector.detect();
         if (edgeInfo.isInstalled()) {
-            sb.append("Installed: Yes\n");
-            sb.append("Version: ").append(edgeInfo.getVersion()).append("\n");
-            sb.append("Path: ").append(edgeInfo.getPath()).append("\n");
+            sb.append(Messages.ENV_INSTALLED_YES).append("\n");
+            sb.append("Версия: ").append(edgeInfo.getVersion()).append("\n");
+            sb.append("Путь: ").append(edgeInfo.getPath()).append("\n");
         } else {
-            sb.append("Installed: No\n");
+            sb.append(Messages.ENV_NOT_INSTALLED).append("\n");
         }
         
-        // Driver Info
-        sb.append("\n=== Edge WebDriver ===\n");
+        // Информация о драйвере
+        sb.append("\n").append(Messages.ENV_DRIVER).append("\n");
         DriverInfo driverInfo = DriverDetector.detect();
         if (driverInfo.isInstalled()) {
-            sb.append("Installed: Yes\n");
-            sb.append("Version: ").append(driverInfo.getVersion()).append("\n");
-            sb.append("Path: ").append(driverInfo.getPath()).append("\n");
-            sb.append("Status: ").append(DriverService.detectAndCompare()).append("\n");
+            sb.append(Messages.ENV_INSTALLED_YES).append("\n");
+            sb.append("Версия: ").append(driverInfo.getVersion()).append("\n");
+            sb.append("Путь: ").append(driverInfo.getPath()).append("\n");
+            sb.append("Статус: ").append(DriverService.detectAndCompare()).append("\n");
         } else {
-            sb.append("Installed: No\n");
+            sb.append(Messages.ENV_NOT_INSTALLED).append("\n");
         }
         
-        // Log Directory
-        sb.append("\n=== Logging ===\n");
+        // Информация о логировании
+        sb.append("\n").append(Messages.ENV_LOGGING).append("\n");
         File logDir = new File(System.getProperty("java.io.tmpdir"));
-        sb.append("Temp Directory: ").append(logDir.getAbsolutePath()).append("\n");
+        sb.append("Временная папка: ").append(logDir.getAbsolutePath()).append("\n");
         
-        // Network Test
-        sb.append("\n=== Network ===\n");
+        // Тест сети
+        sb.append("\n").append(Messages.ENV_NETWORK).append("\n");
         boolean githubReachable = testGitHubConnection();
-        sb.append("GitHub API: ").append(githubReachable ? "Reachable" : "Not Reachable").append("\n");
+        sb.append(githubReachable ? Messages.ENV_GITHUB_REACHABLE : Messages.ENV_GITHUB_NOT_REACHABLE).append("\n");
         
         environmentInfo.setText(sb.toString());
     }
@@ -327,65 +329,67 @@ public class DeveloperWindow {
     }
 
     private void checkUpdates() {
-        logger.info("Developer Action: Checking for updates...");
+        logger.info(Messages.LOG_DEV_CHECK_UPDATES);
         try {
             UpdateService updateService = new UpdateService();
             com.rmc.model.UpdateCheckResult result = updateService.checkForUpdates();
             if (result != null && result.isSuccess()) {
-                logger.info("Update check successful - HTTP Status: {}", result.getHttpStatus());
-                updateStatus(statusUpdate, "Update", true);
+                logger.info("Проверка обновлений успешна - HTTP статус: {}", result.getHttpStatus());
+                updateStatus(statusUpdate, Messages.STATUS_UPDATE, true);
             } else {
-                logger.warn("Update check completed with errors: {}", result != null ? result.getErrorMessage() : "Unknown");
-                updateStatusWarning(statusUpdate, "Update");
+                logger.warn("Проверка обновлений завершена с ошибками: {}", result != null ? result.getErrorMessage() : "Неизвестно");
+                updateStatusWarning(statusUpdate, Messages.STATUS_UPDATE);
             }
         } catch (Exception e) {
-            logger.error("Failed to check updates", e);
-            updateStatus(statusUpdate, "Update", false);
+            logger.error("Не удалось проверить обновления", e);
+            updateStatus(statusUpdate, Messages.STATUS_UPDATE, false);
         }
     }
 
     private void checkDriver() {
-        logger.info("Developer Action: Checking driver...");
+        logger.info(Messages.LOG_DEV_CHECK_DRIVER);
         try {
             EdgeInfo edgeInfo = EdgeDetector.detect();
             DriverInfo driverInfo = DriverDetector.detect();
             DriverStatus status = DriverService.detectAndCompare();
             
-            logger.info("Edge: {} ({})", edgeInfo.isInstalled() ? "Installed" : "Not Installed", edgeInfo.getVersion());
-            logger.info("Driver: {} ({})", driverInfo.isInstalled() ? "Installed" : "Not Installed", driverInfo.getVersion());
-            logger.info("Status: {}", status);
+            String edgeStatus = edgeInfo.isInstalled() ? "Установлен" : "Не установлен";
+            String driverStatus = driverInfo.isInstalled() ? "Установлен" : "Не установлен";
+            logger.info("Edge: {} ({})", edgeStatus, edgeInfo.getVersion());
+            logger.info("Драйвер: {} ({})", driverStatus, driverInfo.getVersion());
+            logger.info("Статус: {}", status);
             
-            updateStatus(statusDriver, "Driver", driverInfo.isInstalled());
-            updateStatus(statusValidation, "Validation", status == DriverStatus.MATCH);
+            updateStatus(statusDriver, Messages.STATUS_DRIVER, driverInfo.isInstalled());
+            updateStatus(statusValidation, Messages.STATUS_VALIDATION, status == DriverStatus.MATCH);
         } catch (Exception e) {
-            logger.error("Failed to check driver", e);
-            updateStatus(statusDriver, "Driver", false);
+            logger.error("Не удалось проверить драйвер", e);
+            updateStatus(statusDriver, Messages.STATUS_DRIVER, false);
         }
     }
 
     private void downloadDriver() {
-        logger.info("Developer Action: Downloading driver...");
+        logger.info(Messages.LOG_DEV_DOWNLOAD_DRIVER);
         try {
             DownloadResult result = DownloadService.downloadDriver();
             if (result.isSuccess()) {
-                logger.info("Download successful: {}", result.getDriverPath());
+                logger.info("Загрузка успешна: {}", result.getDriverPath());
             } else {
-                logger.warn("Download failed: {}", result.getErrorMessage());
+                logger.warn("Загрузка не удалась: {}", result.getErrorMessage());
             }
         } catch (Exception e) {
-            logger.error("Failed to download driver", e);
+            logger.error("Не удалось загрузить драйвер", e);
         }
     }
 
     private void validateDriver() {
-        logger.info("Developer Action: Validating driver...");
+        logger.info(Messages.LOG_DEV_VALIDATE_DRIVER);
         try {
             EdgeInfo edgeInfo = EdgeDetector.detect();
             DriverInfo driverInfo = DriverDetector.detect();
             
             if (!edgeInfo.isInstalled() || !driverInfo.isInstalled()) {
-                logger.warn("Cannot validate: Edge or Driver not installed");
-                updateStatus(statusValidation, "Validation", false);
+                logger.warn(Messages.LOG_CANNOT_VALIDATE);
+                updateStatus(statusValidation, Messages.STATUS_VALIDATION, false);
                 return;
             }
             
@@ -396,114 +400,115 @@ public class DeveloperWindow {
             );
             
             if (result.isValid()) {
-                logger.info("Validation PASSED: {}", result.getMessage());
-                updateStatus(statusValidation, "Validation", true);
+                logger.info("Проверка УСПЕШНА: {}", result.getMessage());
+                updateStatus(statusValidation, Messages.STATUS_VALIDATION, true);
             } else {
-                logger.warn("Validation FAILED: {}", result.getMessage());
-                updateStatus(statusValidation, "Validation", false);
+                logger.warn("Проверка ОШИБКА: {}", result.getMessage());
+                updateStatus(statusValidation, Messages.STATUS_VALIDATION, false);
             }
         } catch (Exception e) {
-            logger.error("Failed to validate driver", e);
-            updateStatus(statusValidation, "Validation", false);
+            logger.error("Не удалось проверить драйвер", e);
+            updateStatus(statusValidation, Messages.STATUS_VALIDATION, false);
         }
     }
 
     private void runStartupSequence() {
-        logger.info("Developer Action: Running startup sequence...");
+        logger.info(Messages.LOG_DEV_RUN_STARTUP);
         try {
             ApplicationLifecycle lifecycle = new ApplicationLifecycle();
             lastReport = lifecycle.start();
             
-            // Update status indicators
-            updateStatus(statusConfig, "Config", lastReport.isConfigLoaded());
-            updateStatus(statusLogging, "Logging", lastReport.isLoggingInitialized());
-            updateStatus(statusVersion, "Version", lastReport.isVersionEngineLoaded());
-            updateStatus(statusUpdate, "Update", lastReport.isUpdateCheckCompleted());
-            updateStatus(statusDriver, "Driver", lastReport.isDriverDetected());
+            // Обновляем индикаторы статуса
+            updateStatus(statusConfig, Messages.STATUS_CONFIG, lastReport.isConfigLoaded());
+            updateStatus(statusLogging, Messages.STATUS_LOGGING, lastReport.isLoggingInitialized());
+            updateStatus(statusVersion, Messages.STATUS_VERSION, lastReport.isVersionEngineLoaded());
+            updateStatus(statusUpdate, Messages.STATUS_UPDATE, lastReport.isUpdateCheckCompleted());
+            updateStatus(statusDriver, Messages.STATUS_DRIVER, lastReport.isDriverDetected());
             
             if (lastReport.getValidationStatus() != null) {
-                updateStatus(statusValidation, "Validation", 
+                updateStatus(statusValidation, Messages.STATUS_VALIDATION, 
                         lastReport.getValidationStatus() == ValidationStatus.VALID);
             }
             
-            updateStatus(statusInternet, "Internet", testGitHubConnection());
+            updateStatus(statusInternet, Messages.STATUS_INTERNET, testGitHubConnection());
             
-            applicationStatus.setText("Status: " + (lastReport.isApplicationReady() ? "Ready" : "Not Ready"));
+            String appStatus = lastReport.isApplicationReady() ? Messages.STATUS_READY : Messages.STATUS_NOT_READY;
+            applicationStatus.setText(appStatus);
             
-            logger.info("Startup sequence completed");
+            logger.info(Messages.LOG_STARTUP_COMPLETE);
         } catch (Exception e) {
-            logger.error("Startup sequence failed", e);
-            applicationStatus.setText("Status: Failed");
+            logger.error(Messages.LOG_STARTUP_FAILED, e);
+            applicationStatus.setText(Messages.STATUS_FAILED);
         }
     }
 
     private void createDiagnosticReport() {
-        logger.info("Developer Action: Creating diagnostic report...");
+        logger.info(Messages.LOG_DEV_CREATE_REPORT);
         try {
             StringBuilder sb = new StringBuilder();
-            sb.append("=== RMC Framework Diagnostic Report ===\n\n");
-            sb.append("Generated: ").append(java.time.LocalDateTime.now()).append("\n\n");
+            sb.append(Messages.REPORT_TITLE).append("\n\n");
+            sb.append(String.format(Messages.REPORT_GENERATED, java.time.LocalDateTime.now())).append("\n\n");
             
-            // Version
-            sb.append("=== Application Version ===\n");
-            sb.append("Current Version: ").append(VersionService.getCurrentVersionString()).append("\n");
+            // Версия
+            sb.append("=== Версия приложения ===\n");
+            sb.append("Текущая версия: ").append(VersionService.getCurrentVersionString()).append("\n");
             try {
                 UpdateConfig config = UpdateConfig.load();
                 sb.append("JSON URL: ").append(config.getJsonUrl()).append("\n");
-                sb.append("Update Channel: ").append(config.getChannel()).append("\n");
+                sb.append("Канал обновлений: ").append(config.getChannel()).append("\n");
             } catch (Exception e) {
-                sb.append("Configuration: Error\n");
+                sb.append(Messages.REPORT_CONFIG_ERROR).append("\n");
             }
             
             // Edge
             sb.append("\n=== Microsoft Edge ===\n");
             EdgeInfo edgeInfo = EdgeDetector.detect();
-            sb.append("Installed: ").append(edgeInfo.isInstalled()).append("\n");
+            sb.append("Установлен: ").append(edgeInfo.isInstalled() ? "Да" : "Нет").append("\n");
             if (edgeInfo.isInstalled()) {
-                sb.append("Version: ").append(edgeInfo.getVersion()).append("\n");
-                sb.append("Path: ").append(edgeInfo.getPath()).append("\n");
+                sb.append("Версия: ").append(edgeInfo.getVersion()).append("\n");
+                sb.append("Путь: ").append(edgeInfo.getPath()).append("\n");
             }
             
-            // Driver
+            // Драйвер
             sb.append("\n=== Edge WebDriver ===\n");
             DriverInfo driverInfo = DriverDetector.detect();
-            sb.append("Installed: ").append(driverInfo.isInstalled()).append("\n");
+            sb.append("Установлен: ").append(driverInfo.isInstalled() ? "Да" : "Нет").append("\n");
             if (driverInfo.isInstalled()) {
-                sb.append("Version: ").append(driverInfo.getVersion()).append("\n");
-                sb.append("Path: ").append(driverInfo.getPath()).append("\n");
-                sb.append("Status: ").append(DriverService.detectAndCompare()).append("\n");
+                sb.append("Версия: ").append(driverInfo.getVersion()).append("\n");
+                sb.append("Путь: ").append(driverInfo.getPath()).append("\n");
+                sb.append("Статус: ").append(DriverService.detectAndCompare()).append("\n");
             }
             
-            // Last Report
+            // Последний отчёт о запуске
             if (lastReport != null) {
-                sb.append("\n=== Last Startup Report ===\n");
+                sb.append("\n").append(Messages.REPORT_SUMMARY).append("\n");
                 sb.append(lastReport.toSummary());
             }
             
-            // System Info
-            sb.append("\n=== System Information ===\n");
-            sb.append("Java Version: ").append(System.getProperty("java.version")).append("\n");
-            sb.append("OS: ").append(System.getProperty("os.name"))
+            // Информация о системе
+            sb.append("\n").append(Messages.REPORT_SYS_INFO).append("\n");
+            sb.append("Java версия: ").append(System.getProperty("java.version")).append("\n");
+            sb.append("ОС: ").append(System.getProperty("os.name"))
               .append(" ").append(System.getProperty("os.version")).append("\n");
-            sb.append("Architecture: ").append(System.getProperty("os.arch")).append("\n");
+            sb.append("Архитектура: ").append(System.getProperty("os.arch")).append("\n");
             
-            // Show in dialog
+            // Показываем в диалоге
             TextArea textArea = new TextArea(sb.toString());
             textArea.setEditable(false);
             textArea.setWrapText(true);
             
             Stage dialog = new Stage();
-            dialog.setTitle("Diagnostic Report");
+            dialog.setTitle("Диагностический отчёт");
             dialog.setWidth(600);
             dialog.setHeight(500);
             
-            Button btnCopy = new Button("Copy to Clipboard");
+            Button btnCopy = new Button(Messages.BTN_COPY_CLIPBOARD);
             btnCopy.setOnAction(e -> {
                 javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
                 javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
                 content.putString(sb.toString());
                 clipboard.setContent(content);
-                logger.info("Report copied to clipboard");
+                logger.info(Messages.LOG_REPORT_COPIED);
             });
             
             VBox vbox = new VBox(10);
@@ -515,24 +520,24 @@ public class DeveloperWindow {
             dialog.show();
             
         } catch (Exception e) {
-            logger.error("Failed to create diagnostic report", e);
+            logger.error("Не удалось создать диагностический отчёт", e);
         }
     }
 
     private void openLogFolder() {
-        logger.info("Developer Action: Opening log folder...");
+        logger.info(Messages.LOG_DEV_OPEN_LOGS);
         try {
             File logDir = new File(System.getProperty("java.io.tmpdir"));
             if (Desktop.isDesktopSupported()) {
                 Desktop.getDesktop().open(logDir);
             }
         } catch (IOException e) {
-            logger.error("Failed to open log folder", e);
+            logger.error("Не удалось открыть папку логов", e);
         }
     }
 
     private void clearDriver() {
-        logger.info("Developer Action: Clearing driver...");
+        logger.info(Messages.LOG_DEV_CLEAR_DRIVER);
         try {
             Path driverDir = Paths.get(
                     System.getenv("LOCALAPPDATA") != null ? System.getenv("LOCALAPPDATA") : System.getProperty("user.home"),
@@ -545,36 +550,36 @@ public class DeveloperWindow {
                     .forEach(p -> {
                         try { Files.deleteIfExists(p); } catch (IOException ignored) {}
                     });
-                logger.info("Driver cleared successfully");
+                logger.info(Messages.LOG_DRIVER_CLEARED);
             } else {
-                logger.info("No driver to clear");
+                logger.info(Messages.LOG_NO_DRIVER_TO_CLEAR);
             }
         } catch (Exception e) {
-            logger.error("Failed to clear driver", e);
+            logger.error(Messages.LOG_CLEAR_DRIVER_FAILED, e);
         }
     }
 
     private void clearLogs() {
-        logger.info("Developer Action: Clearing logs...");
+        logger.info(Messages.LOG_DEV_CLEAR_LOGS);
         UiLogAppender.clear();
-        logger.info("Logs cleared");
+        logger.info(Messages.LOG_LOGS_CLEARED);
     }
 
     private void exit() {
-        logger.info("Developer Diagnostics Window closed");
+        logger.info(Messages.LOG_DEV_EXIT);
         UiLogAppender.detach();
         stage.close();
     }
 
     /**
-     * Show the developer window.
+     * Показать окно разработчика.
      */
     public void show() {
         stage.show();
     }
 
     /**
-     * Close the developer window.
+     * Закрыть окно разработчика.
      */
     public void close() {
         exit();

@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Detector for Microsoft Edge browser installation.
+ * Обнаружитель установки браузера Microsoft Edge.
  */
 public class EdgeDetector {
 
@@ -21,50 +21,50 @@ public class EdgeDetector {
     private static final List<Path> EDGE_SEARCH_PATHS = new ArrayList<>();
 
     static {
-        // Standard Windows installation paths
+        // Стандартные пути установки Windows
         EDGE_SEARCH_PATHS.add(Paths.get("C:\\Program Files\\Microsoft\\Edge\\Application", EDGE_EXECUTABLE));
         EDGE_SEARCH_PATHS.add(Paths.get("C:\\Program Files (x86)\\Microsoft\\Edge\\Application", EDGE_EXECUTABLE));
-        // Add more paths if needed
+        // Добавляем дополнительные пути при необходимости
         EDGE_SEARCH_PATHS.add(Paths.get(System.getProperty("user.home") + "\\AppData\\Local\\Microsoft\\Edge\\Application", EDGE_EXECUTABLE));
     }
 
     private EdgeDetector() {
-        // Utility class
+        // Утилитарный класс
     }
 
     /**
-     * Detect Microsoft Edge installation.
+     * Обнаружить установку Microsoft Edge.
      *
-     * @return EdgeInfo containing path, version, and installation status
+     * @return EdgeInfo с путём, версией и статусом установки
      */
     public static EdgeInfo detect() {
-        logger.info("Searching Microsoft Edge...");
+        logger.info("Поиск Microsoft Edge...");
 
         for (Path searchPath : EDGE_SEARCH_PATHS) {
             File edgeFile = searchPath.toFile();
-            logger.debug("Checking path: {}", searchPath);
+            logger.debug("Проверка пути: {}", searchPath);
 
             if (edgeFile.exists() && edgeFile.isFile()) {
                 String version = getFileVersion(searchPath.toString());
                 if (version != null) {
-                    logger.info("Found Microsoft Edge");
-                    logger.info("Path: {}", searchPath);
-                    logger.info("Version: {}", version);
+                    logger.info("Microsoft Edge найден");
+                    logger.info("Путь: {}", searchPath);
+                    logger.info("Версия: {}", version);
                     return new EdgeInfo(searchPath.toString(), version, true);
                 }
             }
         }
 
-        logger.warn("Microsoft Edge not found");
+        logger.warn("Microsoft Edge не найден");
         return EdgeInfo.notInstalled();
     }
 
     /**
-     * Get file version using Windows FileVersion API via PowerShell.
-     * Does NOT execute the target application.
+     * Получить версию файла через Windows FileVersion API через PowerShell.
+     * НЕ выполняет целевое приложение.
      *
-     * @param filePath Path to the file
-     * @return Version string or null if unable to retrieve
+     * @param filePath Путь к файлу
+     * @return Строка версии или null, если не удалось получить
      */
     private static String getFileVersion(String filePath) {
         try {
@@ -87,15 +87,15 @@ public class EdgeDetector {
                 return version;
             }
         } catch (Exception e) {
-            logger.debug("Could not get file version for {}: {}", filePath, e.getMessage());
+            logger.debug("Не удалось получить версию файла {}: {}", filePath, e.getMessage());
         }
         return null;
     }
 
     /**
-     * Get all search paths for Edge detection.
+     * Получить все пути поиска для обнаружения Edge.
      *
-     * @return List of paths that will be searched
+     * @return Список путей для поиска
      */
     public static List<Path> getSearchPaths() {
         return new ArrayList<>(EDGE_SEARCH_PATHS);
