@@ -16,7 +16,7 @@ class HttpExceptionTest {
     @DisplayName("Should create timeout exception")
     void testTimeoutException() {
         URI uri = URI.create("https://example.com/api");
-        RuntimeException cause = new java.net.http.HttpTimeoutException("Request timed out");
+        Exception cause = new java.net.http.HttpTimeoutException("Request timed out");
         
         HttpException ex = HttpException.timeout(uri, "GET", cause);
         
@@ -33,7 +33,7 @@ class HttpExceptionTest {
     @DisplayName("Should create connection failed exception")
     void testConnectionFailedException() {
         URI uri = URI.create("https://example.com/api");
-        RuntimeException cause = new java.net.ConnectException("Connection refused");
+        Exception cause = new java.net.ConnectException("Connection refused");
         
         HttpException ex = HttpException.connectionFailed(uri, "POST", cause);
         
@@ -47,7 +47,7 @@ class HttpExceptionTest {
     @DisplayName("Should detect DNS error from UnknownHostException")
     void testDnsErrorException() {
         URI uri = URI.create("https://unknown-host.com/api");
-        RuntimeException cause = new java.net.UnknownHostException("unknown-host.com");
+        Exception cause = new java.net.UnknownHostException("unknown-host.com");
         
         HttpException ex = HttpException.connectionFailed(uri, "GET", cause);
         
@@ -73,7 +73,7 @@ class HttpExceptionTest {
     @DisplayName("Should create SSL error exception")
     void testSslErrorException() {
         URI uri = URI.create("https://example.com/api");
-        RuntimeException cause = new javax.net.ssl.SSLException("SSL handshake failed");
+        Exception cause = new javax.net.ssl.SSLException("SSL handshake failed");
         
         HttpException ex = HttpException.sslError(uri, "GET", cause);
         
@@ -108,21 +108,16 @@ class HttpExceptionTest {
     }
     
     @Test
-    @DisplayName("Should handle optionals correctly when null")
-    void testOptionalsWhenNull() {
-        HttpException ex = new HttpException(
-            "Test error",
-            null,
-            HttpException.ErrorType.UNKNOWN,
-            null,
-            null,
-            null,
-            null
-        );
+    @DisplayName("Should handle optionals correctly for http error without body")
+    void testOptionalsForHttpError() {
+        URI uri = URI.create("https://example.com/api");
         
-        assertTrue(ex.getRequestUri().isEmpty());
-        assertTrue(ex.getMethod().isEmpty());
-        assertTrue(ex.getStatusCode().isEmpty());
+        HttpException ex = HttpException.httpError(uri, "POST", 500, null);
+        
+        assertTrue(ex.getRequestUri().isPresent());
+        assertEquals(uri, ex.getRequestUri().get());
+        assertEquals("POST", ex.getMethod().orElse(null));
+        assertEquals(500, ex.getStatusCode().orElse(0));
         assertTrue(ex.getResponseBody().isEmpty());
     }
 }
