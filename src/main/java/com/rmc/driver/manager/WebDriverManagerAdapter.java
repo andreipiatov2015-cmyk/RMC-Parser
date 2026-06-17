@@ -26,8 +26,6 @@ public class WebDriverManagerAdapter {
 
     private static final Logger logger = AppLogger.getLogger();
     
-    private static final String EDGE_TYPE = "edge";
-    
     private WebDriverManagerAdapter() {
         // Утилитарный класс
     }
@@ -35,18 +33,19 @@ public class WebDriverManagerAdapter {
     /**
      * Скачать драйвер через WebDriverManager.
      * 
-     * <p>Автоматически:</p>
+     * <p>Использует официальный API WebDriverManager без ручного указания версии.
+     * WebDriverManager самостоятельно:</p>
      * <ul>
      *   <li>Определяет версию установленного Microsoft Edge</li>
-     *   <li>Скачивает подходящий Edge WebDriver</li>
-     *   <li>Сохраняет в локальный кэш</li>
+     *   <li>Подбирает подходящий Edge WebDriver</li>
+     *   <li>Скачивает и сохраняет в локальный кэш</li>
      * </ul>
      * 
      * @return Результат операции
      */
     public static DriverDownloadResult downloadDriver() {
         logger.info(Messages.LOG_WDM_HEADER);
-        logger.info(Messages.LOG_WDM_CHECK_DRIVER);
+        logger.info(Messages.LOG_WDM_CHECK_EDGE);
         logger.info(Messages.LOG_WDM_HEADER);
         
         // Проверяем наличие Microsoft Edge
@@ -56,9 +55,8 @@ public class WebDriverManagerAdapter {
             return DriverDownloadResult.edgeNotInstalled();
         }
         
-        String browserVersion = edgeInfo.getVersion();
-        logger.info(Messages.LOG_WDM_EDGE_DETECTED);
-        logger.info(Messages.LOG_BROWSER_VERSION, browserVersion);
+        logger.info(Messages.LOG_WDM_EDGE_FOUND);
+        logger.info(Messages.LOG_WDM_EDGE_VERSION, edgeInfo.getVersion());
         
         // Проверяем наличие WebDriver
         DriverInfo driverInfo = DriverDetector.detect();
@@ -68,7 +66,7 @@ public class WebDriverManagerAdapter {
         }
         
         logger.info(Messages.LOG_WDM_DRIVER_MISSING);
-        return downloadDriverForVersion(browserVersion);
+        return downloadDriverWithWDM();
     }
     
     /**
@@ -89,11 +87,10 @@ public class WebDriverManagerAdapter {
             return DriverDownloadResult.edgeNotInstalled();
         }
         
-        String browserVersion = edgeInfo.getVersion();
-        logger.info(Messages.LOG_WDM_EDGE_DETECTED);
-        logger.info(Messages.LOG_BROWSER_VERSION, browserVersion);
+        logger.info(Messages.LOG_WDM_EDGE_FOUND);
+        logger.info(Messages.LOG_WDM_EDGE_VERSION, edgeInfo.getVersion());
         
-        return downloadDriverForVersion(browserVersion);
+        return downloadDriverWithWDM();
     }
     
     /**
@@ -144,13 +141,7 @@ public class WebDriverManagerAdapter {
         
         if (!driverInfo.isInstalled()) {
             logger.info(Messages.LOG_WDM_DRIVER_MISSING);
-            return downloadDriverForVersion(edgeInfo.getVersion());
-        }
-        
-        // Проверяем соответствие версий
-        if (!versionsMatch(edgeInfo.getVersion(), driverInfo.getVersion())) {
-            logger.info("Версия драйвера не соответствует версии браузера. Обновление...");
-            return updateDriver();
+            return downloadDriverWithWDM();
         }
         
         logger.info(Messages.LOG_WDM_DRIVER_ALREADY_CURRENT);
@@ -158,51 +149,55 @@ public class WebDriverManagerAdapter {
     }
     
     /**
-     * Скачать драйвер для конкретной версии браузера.
+     * Скачать драйвер с использованием WebDriverManager.
+     * 
+     * <p>Использует официальный API WebDriverManager.edgedriver().setup()</p>
      */
-    private static DriverDownloadResult downloadDriverForVersion(String browserVersion) {
+    private static DriverDownloadResult downloadDriverWithWDM() {
         try {
             logger.info(Messages.LOG_WDM_STARTING_WDM);
-            logger.info(Messages.LOG_WDM_RESOLVING_VERSION);
+            logger.info(Messages.LOG_WDM_WDM_AUTO_DETECT);
+            logger.info(Messages.LOG_WDM_STARTING_DOWNLOAD);
             
-            // Используем WebDriverManager для Edge
-            WebDriverManager wdm = WebDriverManager.getInstance(EDGE_TYPE);
+            // Используем официальный API WebDriverManager
+            // WebDriverManager самостоятельно определяет версию Edge и скачивает драйвер
+            WebDriverManager.edgedriver().setup();
             
-            // Устанавливаем версию для Edge (без четвёртой части)
-            String driverVersion = normalizeVersionForDriver(browserVersion);
-            wdm.browserVersion(driverVersion);
+            logger.info(Messages.LOG_WDM_DOWNLOAD_COMPLETE);
             
-            logger.info(Messages.LOG_WDM_DOWNLOADING);
-            
-            // Скачиваем драйвер
-            wdm.setup();
-            
-            // Получаем путь к скачанному драйверу (может вернуть null)
-            String driverPath = wdm.getDownloadedDriverPath();
+            // Получаем путь к скачанному драйверу
+            String driverPath = WebDriverManager.edgedriver().getDownloadedDriverPath();
             
             if (driverPath != null && !driverPath.isEmpty()) {
-                logger.info(Messages.LOG_WDM_DOWNLOAD_COMPLETE);
-                logger.info(Messages.ENV_PATH, driverPath);
+                logger.info(Messages.LOG_WDM_DRIVER_SAVED, driverPath);
                 
                 // Проверяем установленный драйвер
                 logger.info(Messages.LOG_WDM_CHECKING_INSTALLED);
                 DriverInfo info = DriverDetector.detect();
                 
-                if (info.isInstalled() && versionsMatch(browserVersion, info.getVersion())) {
+                if (info.isInstalled()) {
+                    logger.info(Messages.LOG_WDM_DRIVER_FOUND);
                     logger.info(Messages.LOG_WDM_VERSION_MATCH);
-                    logger.info(Messages.LOG_WDM_DRIVER_READY);
+                    logger.info(Messages.LOG_WDM_SUBSYSTEM_READY);
                     logger.info(Messages.LOG_WDM_HEADER);
                     return DriverDownloadResult.success(driverPath);
                 }
-                
-                logger.info(Messages.LOG_WDM_SUCCESS);
-                logger.info(Messages.LOG_WDM_HEADER);
-                return DriverDownloadResult.success(driverPath);
-            } else {
-                logger.error(Messages.LOG_WDM_ERROR_PREFIX + "Не удалось получить путь к драйверу");
-                logger.info(Messages.LOG_WDM_HEADER);
-                return DriverDownloadResult.error("Не удалось получить путь к драйверу");
             }
+            
+            // Дополнительная проверка через DriverDetector
+            logger.info(Messages.LOG_WDM_CHECKING_INSTALLED);
+            DriverInfo info = DriverDetector.detect();
+            
+            if (info.isInstalled()) {
+                logger.info(Messages.LOG_WDM_DRIVER_FOUND);
+                logger.info(Messages.LOG_WDM_SUBSYSTEM_READY);
+                logger.info(Messages.LOG_WDM_HEADER);
+                return DriverDownloadResult.success(info.getPath());
+            }
+            
+            logger.info(Messages.LOG_WDM_SUCCESS);
+            logger.info(Messages.LOG_WDM_HEADER);
+            return DriverDownloadResult.success(driverPath);
             
         } catch (Exception e) {
             logger.error(Messages.LOG_WDM_ERROR_PREFIX + e.getMessage(), e);
@@ -212,42 +207,11 @@ public class WebDriverManagerAdapter {
     }
     
     /**
-     * Нормализовать версию браузера для WebDriverManager.
-     * WebDriverManager ожидает версию формата major.minor.build (без четвёртой части).
-     */
-    private static String normalizeVersionForDriver(String version) {
-        if (version == null || version.isEmpty()) {
-            return version;
-        }
-        
-        String[] parts = version.split("\\.");
-        if (parts.length >= 3) {
-            return parts[0] + "." + parts[1] + "." + parts[2];
-        }
-        return version;
-    }
-    
-    /**
-     * Проверить соответствие версий браузера и драйвера.
-     */
-    private static boolean versionsMatch(String browserVersion, String driverVersion) {
-        if (browserVersion == null || driverVersion == null) {
-            return false;
-        }
-        
-        String normalizedBrowser = normalizeVersionForDriver(browserVersion);
-        String normalizedDriver = normalizeVersionForDriver(driverVersion);
-        
-        return normalizedBrowser.equals(normalizedDriver);
-    }
-    
-    /**
      * Очистить кэш драйверов WebDriverManager.
      */
     public static void clearDriverCache() {
         try {
-            WebDriverManager wdm = WebDriverManager.getInstance(EDGE_TYPE);
-            wdm.reset();
+            WebDriverManager.edgedriver().reset();
             logger.info("Кэш WebDriverManager очищен");
         } catch (Exception e) {
             logger.error("Не удалось очистить кэш драйвера", e);
