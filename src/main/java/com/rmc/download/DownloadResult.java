@@ -21,6 +21,7 @@ public class DownloadResult {
         ZIP_ERROR,
         EXTRACTION_ERROR,
         PERMISSION_DENIED,
+        RESOLVER_ERROR,
         UNKNOWN_ERROR
     }
 
@@ -79,6 +80,11 @@ public class DownloadResult {
     public static DownloadResult unknownError(Exception e) {
         return new DownloadResult(false, null, null,
             "Unknown error: " + e.getMessage(), ErrorType.UNKNOWN_ERROR);
+    }
+
+    public static DownloadResult resolverError(String errorType, String message) {
+        return new DownloadResult(false, null, null,
+            "Resolver error [" + errorType + "]: " + message, ErrorType.RESOLVER_ERROR);
     }
 
     public boolean isSuccess() {
