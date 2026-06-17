@@ -217,35 +217,27 @@ public class Messages {
     public static final String LOG_VALIDATION_NOT_FOUND = "Проверка: ОШИБКА - Драйвер не найден";
     public static final String LOG_VALIDATION_END = "==================================================";
     
-    // ==================== WebDriverManager ====================
+    // ==================== Selenium Manager ====================
+    // Selenium Manager - официальный менеджер драйверов Selenium 4.6+
     
-    public static final String LOG_WDM_HEADER = "==============================";
-    public static final String LOG_WDM_CHECK_EDGE = "Проверка Microsoft Edge";
-    public static final String LOG_WDM_EDGE_FOUND = "Microsoft Edge найден";
-    public static final String LOG_WDM_EDGE_VERSION = "Версия браузера:\n{}";
-    public static final String LOG_WDM_DRIVER_MISSING = "WebDriver отсутствует.";
-    public static final String LOG_WDM_STARTING_WDM = "Запуск WebDriverManager...";
-    public static final String LOG_WDM_WDM_AUTO_DETECT = "WebDriverManager самостоятельно определяет подходящий драйвер...";
-    public static final String LOG_WDM_STARTING_DOWNLOAD = "Начата загрузка...";
-    public static final String LOG_WDM_DOWNLOAD_COMPLETE = "Загрузка успешно завершена.";
-    public static final String LOG_WDM_DRIVER_SAVED = "Драйвер сохранён:\n{}";
-    public static final String LOG_WDM_CHECKING_INSTALLED = "Проверка установленного драйвера...";
-    public static final String LOG_WDM_DRIVER_FOUND = "Драйвер найден.";
-    public static final String LOG_WDM_VERSION_MATCH = "Версия совпадает.";
-    public static final String LOG_WDM_SUBSYSTEM_READY = "Подсистема готова.";
-    public static final String LOG_WDM_DRIVER_ALREADY_CURRENT = "Драйвер уже соответствует установленной версии Microsoft Edge.";
-    public static final String LOG_WDM_SUCCESS = "Драйвер Microsoft Edge успешно установлен.";
-    public static final String LOG_WDM_NO_EDGE = "Microsoft Edge не установлен. Установите Microsoft Edge для продолжения.";
-    public static final String LOG_WDM_ERROR_PREFIX = "Ошибка WebDriverManager: ";
-    
-    public static final String LOG_WDM_UPDATE_START = "Обновление драйвера...";
-    public static final String LOG_WDM_UPDATE_COMPLETE = "Обновление завершено.";
-    
-    // ==================== Selenium Manager (альтернатива WebDriverManager) ====================
-    // Примечание: Selenium Manager теперь поставляется с Selenium 4.6+
-    // Для полного перехода на Selenium Manager можно использовать:
-    // io.github.bonigarcia.wdm.SeleniumManager.getInstance().execDriverManager(...)
-    // Но WebDriverManager обеспечивает лучшую поддержку для Microsoft Edge
+    public static final String LOG_SM_HEADER = "==============================";
+    public static final String LOG_SM_PREPARING_SELENIUM = "Подготовка Selenium";
+    public static final String LOG_SM_EDGE_FOUND = "Microsoft Edge найден";
+    public static final String LOG_SM_EDGE_VERSION = "Версия браузера:\n{}";
+    public static final String LOG_SM_DRIVER_MISSING = "Драйвер не найден.";
+    public static final String LOG_SM_DRIVER_ALREADY_READY = "Драйвер уже готов к использованию.";
+    public static final String LOG_SM_STARTING_SM = "Запуск Selenium Manager...";
+    public static final String LOG_SM_FINDING_COMPATIBLE = "Определение совместимого драйвера...";
+    public static final String LOG_SM_CHECKING_CACHE = "Проверка локального кэша...";
+    public static final String LOG_SM_DOWNLOAD_IF_NEEDED = "При необходимости выполняется загрузка...";
+    public static final String LOG_SM_DOWNLOAD_COMPLETE = "Драйвер загружен.";
+    public static final String LOG_SM_DRIVER_READY = "Драйвер готов.";
+    public static final String LOG_SM_DRIVER_FOUND = "Драйвер найден.";
+    public static final String LOG_SM_PATH = "Путь:\n{}";
+    public static final String LOG_SM_SUBSYSTEM_READY = "Подсистема готова.";
+    public static final String LOG_SM_SUCCESS = "Подготовка успешно завершена";
+    public static final String LOG_SM_NO_EDGE = "Microsoft Edge не установлен. Установите Microsoft Edge для продолжения.";
+    public static final String LOG_SM_ERROR_PREFIX = "Ошибка Selenium Manager: ";
     
     // ==================== Диагностический отчёт ====================
     
