@@ -3,14 +3,13 @@ package com.rmc.ui;
 import com.rmc.app.ApplicationLifecycle;
 import com.rmc.app.LifecycleReport;
 import com.rmc.config.UpdateConfig;
-import com.rmc.download.DownloadResult;
-import com.rmc.download.DownloadService;
 import com.rmc.driver.DriverDetector;
 import com.rmc.driver.DriverInfo;
 import com.rmc.driver.DriverService;
 import com.rmc.driver.DriverStatus;
 import com.rmc.driver.EdgeDetector;
 import com.rmc.driver.EdgeInfo;
+import com.rmc.driver.manager.WebDriverManagerAdapter;
 import com.rmc.driver.validation.DriverValidator;
 import com.rmc.driver.validation.ValidationResult;
 import com.rmc.driver.validation.ValidationStatus;
@@ -370,9 +369,9 @@ public class DeveloperWindow {
     private void downloadDriver() {
         logger.info(Messages.LOG_DEV_DOWNLOAD_DRIVER);
         try {
-            DownloadResult result = DownloadService.downloadDriver();
+            WebDriverManagerAdapter.DriverDownloadResult result = WebDriverManagerAdapter.downloadDriver();
             if (result.isSuccess()) {
-                logger.info("Загрузка успешна: {}", result.getDriverPath());
+                logger.info(Messages.LOG_WDM_SUCCESS);
             } else {
                 logger.warn("Загрузка не удалась: {}", result.getErrorMessage());
             }
@@ -539,21 +538,9 @@ public class DeveloperWindow {
     private void clearDriver() {
         logger.info(Messages.LOG_DEV_CLEAR_DRIVER);
         try {
-            Path driverDir = Paths.get(
-                    System.getenv("LOCALAPPDATA") != null ? System.getenv("LOCALAPPDATA") : System.getProperty("user.home"),
-                    "RMCParser", "drivers", "edge"
-            );
-            
-            if (Files.exists(driverDir)) {
-                Files.walk(driverDir)
-                    .sorted((a, b) -> -a.compareTo(b))
-                    .forEach(p -> {
-                        try { Files.deleteIfExists(p); } catch (IOException ignored) {}
-                    });
-                logger.info(Messages.LOG_DRIVER_CLEARED);
-            } else {
-                logger.info(Messages.LOG_NO_DRIVER_TO_CLEAR);
-            }
+            // Очищаем драйвер через адаптер WebDriverManager
+            WebDriverManagerAdapter.clearDriverCache();
+            logger.info(Messages.LOG_DRIVER_CLEARED);
         } catch (Exception e) {
             logger.error(Messages.LOG_CLEAR_DRIVER_FAILED, e);
         }

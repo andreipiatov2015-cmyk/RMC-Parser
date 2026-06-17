@@ -1,15 +1,12 @@
 package com.rmc.app;
 
 import com.rmc.config.UpdateConfig;
-import com.rmc.download.DownloadResult;
-import com.rmc.download.DownloadService;
 import com.rmc.driver.DriverDetector;
 import com.rmc.driver.DriverService;
 import com.rmc.driver.EdgeDetector;
 import com.rmc.driver.EdgeInfo;
 import com.rmc.driver.DriverInfo;
 import com.rmc.driver.DriverStatus;
-import com.rmc.driver.validation.DriverManifest;
 import com.rmc.driver.validation.DriverValidator;
 import com.rmc.driver.validation.ValidationResult;
 import com.rmc.driver.validation.ValidationStatus;
@@ -19,8 +16,6 @@ import com.rmc.update.UpdateService;
 import com.rmc.version.VersionService;
 import org.slf4j.Logger;
 
-import java.io.File;
-import java.net.URL;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 
