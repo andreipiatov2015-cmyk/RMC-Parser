@@ -1,0 +1,65 @@
+/* RMC Parser - Main Styles */
+
+.root {
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 14px;
+}
+
+.tab-pane {
+    -fx-tab-min-height: 30;
+    -fx-tab-max-height: 30;
+}
+
+.tab {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.button {
+    -fx-background-color: #0078D4;
+    -fx-text-fill: white;
+    -fx-padding: 8 16;
+    -fx-background-radius: 4;
+}
+
+.button:hover {
+    -fx-background-color: #106EBE;
+}
+
+.button:pressed {
+    -fx-background-color: #005A9E;
+}
+
+.button:disabled {
+    -fx-background-color: #CCCCCC;
+    -fx-text-fill: #666666;
+}
+
+.text-field, .password-field {
+    -fx-padding: 6;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-border-color: #CCCCCC;
+}
+
+.text-area {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #CCCCCC;
+}
+
+.table-view {
+    -fx-background-color: white;
+}
+
+.table-view .column-header {
+    -fx-background-color: #F0F0F0;
+    -fx-font-weight: bold;
+}
+
+.table-view .table-cell {
+    -fx-padding: 5;
+}
+
+.label {
+    -fx-text-fill: #333333;
+}
