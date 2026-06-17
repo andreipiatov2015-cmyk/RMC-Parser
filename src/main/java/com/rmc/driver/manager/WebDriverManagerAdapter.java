@@ -12,15 +12,16 @@ import org.slf4j.Logger;
 /**
  * Адаптер для WebDriverManager - официальная библиотека управления драйверами.
  * 
- * <p>Полностью инкапсулирует работу с WebDriverManager, обеспечивая:</p>
- * <ul>
- *   <li>Автоматическое определение версии Microsoft Edge</li>
- *   <li>Скачивание подходящего Edge WebDriver</li>
- *   <li>Управление локальным кэшем драйверов</li>
- *   <li>Обновление драйвера при изменении версии браузера</li>
- * </ul>
+ * <p>Интеграция основана на официальной документации WebDriverManager 6.x
+ * (https://bonigarcia.dev/webdrivermanager/)</p>
  * 
- * <p>Остальная программа не обращается к WebDriverManager напрямую.</p>
+ * <p>Основные принципы:</p>
+ * <ul>
+ *   <li>Используем WebDriverManager.edgedriver().setup() - официальный API</li>
+ *   <li>WebDriverManager самостоятельно определяет версию Edge</li>
+ *   <li>Скачивает драйвер с официальных серверов Microsoft</li>
+ *   <li>Кэширует драйвер в ~/.cache/selenium</li>
+ * </ul>
  */
 public class WebDriverManagerAdapter {
 
@@ -33,13 +34,8 @@ public class WebDriverManagerAdapter {
     /**
      * Скачать драйвер через WebDriverManager.
      * 
-     * <p>Использует официальный API WebDriverManager без ручного указания версии.
-     * WebDriverManager самостоятельно:</p>
-     * <ul>
-     *   <li>Определяет версию установленного Microsoft Edge</li>
-     *   <li>Подбирает подходящий Edge WebDriver</li>
-     *   <li>Скачивает и сохраняет в локальный кэш</li>
-     * </ul>
+     * <p>Использует официальный API WebDriverManager.edgedriver().setup()
+     * без ручного указания версии браузера.</p>
      * 
      * @return Результат операции
      */
@@ -72,8 +68,6 @@ public class WebDriverManagerAdapter {
     /**
      * Обновить драйвер через WebDriverManager.
      * 
-     * <p>Вызывается когда версия браузера изменилась и требуется новый драйвер.</p>
-     * 
      * @return Результат операции
      */
     public static DriverDownloadResult updateDriver() {
@@ -95,8 +89,6 @@ public class WebDriverManagerAdapter {
     
     /**
      * Проверить, установлен ли драйвер.
-     * 
-     * @return true если драйвер установлен, иначе false
      */
     public static boolean isDriverInstalled() {
         return DriverDetector.detect().isInstalled();
@@ -104,8 +96,6 @@ public class WebDriverManagerAdapter {
     
     /**
      * Получить версию установленного драйвера.
-     * 
-     * @return Версия драйвера или null если не установлен
      */
     public static String getDriverVersion() {
         DriverInfo info = DriverDetector.detect();
@@ -114,8 +104,6 @@ public class WebDriverManagerAdapter {
     
     /**
      * Получить путь к установленному драйверу.
-     * 
-     * @return Путь к драйверу или null если не установлен
      */
     public static String getDriverPath() {
         DriverInfo info = DriverDetector.detect();
@@ -124,11 +112,6 @@ public class WebDriverManagerAdapter {
     
     /**
      * Убедиться что драйвер готов к использованию.
-     * 
-     * <p>Если драйвер отсутствует - скачивает его.</p>
-     * <p>Если драйвер устарел - обновляет его.</p>
-     * 
-     * @return Результат операции
      */
     public static DriverDownloadResult ensureDriverReady() {
         EdgeInfo edgeInfo = EdgeDetector.detect();
@@ -151,7 +134,8 @@ public class WebDriverManagerAdapter {
     /**
      * Скачать драйвер с использованием WebDriverManager.
      * 
-     * <p>Использует официальный API WebDriverManager.edgedriver().setup()</p>
+     * <p>Использует официальный API WebDriverManager.edgedriver().setup()
+     * согласно документации https://bonigarcia.dev/webdrivermanager/#_driver_management</p>
      */
     private static DriverDownloadResult downloadDriverWithWDM() {
         try {
@@ -159,14 +143,19 @@ public class WebDriverManagerAdapter {
             logger.info(Messages.LOG_WDM_WDM_AUTO_DETECT);
             logger.info(Messages.LOG_WDM_STARTING_DOWNLOAD);
             
-            // Используем официальный API WebDriverManager
-            // WebDriverManager самостоятельно определяет версию Edge и скачивает драйвер
-            WebDriverManager.edgedriver().setup();
+            // Получаем экземпляр менеджера и вызываем setup()
+            // WebDriverManager самостоятельно:
+            // 1. Определяет версию Edge
+            // 2. Находит подходящий msedgedriver
+            // 3. Скачивает драйвер с официальных серверов Microsoft
+            // 4. Кэширует в ~/.cache/selenium
+            WebDriverManager wdm = WebDriverManager.edgedriver();
+            wdm.setup();
             
             logger.info(Messages.LOG_WDM_DOWNLOAD_COMPLETE);
             
             // Получаем путь к скачанному драйверу
-            String driverPath = WebDriverManager.edgedriver().getDownloadedDriverPath();
+            String driverPath = wdm.getDownloadedDriverPath();
             
             if (driverPath != null && !driverPath.isEmpty()) {
                 logger.info(Messages.LOG_WDM_DRIVER_SAVED, driverPath);
@@ -211,7 +200,7 @@ public class WebDriverManagerAdapter {
      */
     public static void clearDriverCache() {
         try {
-            WebDriverManager.edgedriver().reset();
+            WebDriverManager.edgedriver().clearDriverCache();
             logger.info("Кэш WebDriverManager очищен");
         } catch (Exception e) {
             logger.error("Не удалось очистить кэш драйвера", e);
