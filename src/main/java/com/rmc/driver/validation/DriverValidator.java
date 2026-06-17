@@ -2,6 +2,7 @@ package com.rmc.driver.validation;
 
 import com.rmc.driver.resolver.Architecture;
 import com.rmc.driver.resolver.Platform;
+import com.rmc.i18n.Messages;
 import com.rmc.logging.AppLogger;
 import org.slf4j.Logger;
 
@@ -13,14 +14,14 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Validates installed Microsoft Edge WebDriver.
+ * Проверяет установленный Microsoft Edge WebDriver.
  * 
- * <p>Checks:
+ * <p>Проверяет:
  * <ul>
- *   <li>Driver exists at the expected path</li>
- *   <li>Executable file exists and is readable</li>
- *   <li>FileVersion matches expected version</li>
- *   <li>Platform and architecture are correct</li>
+ *   <li>Драйвер существует по ожидаемому пути</li>
+ *   <li>Исполняемый файл существует и доступен для чтения</li>
+ *   <li>FileVersion соответствует ожидаемой версии</li>
+ *   <li>Платформа и архитектура корректны</li>
  * </ul></p>
  */
 public class DriverValidator {
@@ -28,43 +29,41 @@ public class DriverValidator {
     private static final Logger logger = AppLogger.getLogger();
 
     private DriverValidator() {
-        // Utility class
+        // Утилитарный класс
     }
 
     /**
-     * Validate the installed driver against the expected browser version.
+     * Проверить установленный драйвер относительно ожидаемой версии браузера.
      *
-     * @param driverPath Path to the driver executable
-     * @param browserVersion Expected browser version
-     * @param expectedDriverVersion Expected driver version
-     * @return ValidationResult with manifest and status
+     * @param driverPath Путь к исполняемому файлу драйвера
+     * @param browserVersion Ожидаемая версия браузера
+     * @param expectedDriverVersion Ожидаемая версия драйвера
+     * @return ValidationResult с манифестом и статусом
      */
     public static ValidationResult validate(String driverPath, String browserVersion, String expectedDriverVersion) {
         return validate(Paths.get(driverPath), browserVersion, expectedDriverVersion);
     }
 
     /**
-     * Validate the installed driver against the expected browser version.
+     * Проверить установленный драйвер относительно ожидаемой версии браузера.
      *
-     * @param driverPath Path to the driver executable
-     * @param browserVersion Expected browser version
-     * @param expectedDriverVersion Expected driver version
-     * @return ValidationResult with manifest and status
+     * @param driverPath Путь к исполняемому файлу драйвера
+     * @param browserVersion Ожидаемая версия браузера
+     * @param expectedDriverVersion Ожидаемая версия драйвера
+     * @return ValidationResult с манифестом и статусом
      */
     public static ValidationResult validate(Path driverPath, String browserVersion, String expectedDriverVersion) {
-        logger.info("=================================================");
-        logger.info("Driver Validation Engine");
-        logger.info("=================================================");
+        logger.info(Messages.LOG_VALIDATION_SERVICE);
 
-        // Detect platform and architecture
+        // Определяем платформу и архитектуру
         Platform platform = Platform.detect();
         Architecture architecture = Architecture.detect();
         
-        logger.info("Driver path: {}", driverPath);
-        logger.info("Browser version: {}", browserVersion);
-        logger.info("Expected version: {}", expectedDriverVersion);
-        logger.info("Platform: {}", platform);
-        logger.info("Architecture: {}", architecture);
+        logger.info("Путь к драйверу: {}", driverPath);
+        logger.info(Messages.LOG_BROWSER_VERSION, browserVersion);
+        logger.info(Messages.LOG_EXPECTED_VERSION, expectedDriverVersion);
+        logger.info(Messages.LOG_PLATFORM, platform);
+        logger.info(Messages.LOG_ARCHITECTURE, architecture);
 
         // Build base manifest
         DriverManifest.Builder manifestBuilder = DriverManifest.builder()
@@ -75,36 +74,36 @@ public class DriverValidator {
                 .architecture(architecture)
                 .validationTime(LocalDateTime.now());
 
-        // Check if driver exists
+        // Проверяем существование драйвера
         if (!Files.exists(driverPath)) {
-            logger.info("Driver exists: NO");
-            logger.info("Validation: FAIL - Driver not found");
-            logger.info("=================================================");
+            logger.info(Messages.LOG_DRIVER_NOT_EXISTS);
+            logger.info(Messages.LOG_VALIDATION_NOT_FOUND);
+            logger.info(Messages.LOG_VALIDATION_END);
             return ValidationResult.failure(
                     ValidationStatus.MISSING,
                     ValidationStatus.MISSING.getDescription()
             );
         }
 
-        logger.info("Driver exists: YES");
+        logger.info(Messages.LOG_DRIVER_EXISTS);
 
-        // Check if it's a file (not directory)
+        // Проверяем, что это файл, а не директория
         if (!Files.isRegularFile(driverPath)) {
-            logger.info("Validation: FAIL - Path is not a file");
-            logger.info("=================================================");
+            logger.info("Проверка: ОШИБКА - Путь не является файлом");
+            logger.info(Messages.LOG_VALIDATION_END);
             return ValidationResult.failure(
                     ValidationStatus.INVALID,
-                    "Driver path is not a regular file"
+                    "Путь к драйверу не является файлом"
             );
         }
 
         // Check if executable
         if (!Files.isReadable(driverPath)) {
-            logger.info("Validation: FAIL - File is not readable");
-            logger.info("=================================================");
+            logger.info("Проверка: ОШИБКА - Файл не доступен для чтения");
+            logger.info(Messages.LOG_VALIDATION_END);
             return ValidationResult.failure(
                     ValidationStatus.INVALID,
-                    "Driver file is not readable"
+                    "Файл драйвера не доступен для чтения"
             );
         }
 
@@ -112,17 +111,17 @@ public class DriverValidator {
         String actualVersion = readDriverVersion(driverPath);
         
         if (actualVersion == null) {
-            logger.info("Driver Version: UNKNOWN");
-            logger.info("Validation: FAIL - Could not read version");
-            logger.info("=================================================");
+            logger.info(Messages.LOG_DRIVER_VERSION_UNKNOWN);
+            logger.info("Проверка: ОШИБКА - Не удалось прочитать версию");
+            logger.info(Messages.LOG_VALIDATION_END);
             return ValidationResult.failure(
                     ValidationStatus.UNKNOWN,
-                    "Could not read driver version"
+                    "Не удалось прочитать версию драйвера"
             );
         }
 
-        logger.info("Driver Version: {}", actualVersion);
-        logger.info("Expected: {}", expectedDriverVersion);
+        logger.info(Messages.LOG_DRIVER_VERSION_FOUND, actualVersion);
+        logger.info("Ожидаемая: {}", expectedDriverVersion);
 
         // Normalize versions for comparison
         String normalizedActual = normalizeVersion(actualVersion);
@@ -131,10 +130,10 @@ public class DriverValidator {
         // Compare versions
         boolean versionsMatch = normalizedActual.equals(normalizedExpected);
 
-        logger.info("Version Match: {}", versionsMatch ? "YES" : "NO");
+        logger.info("Версия совпадает: {}", versionsMatch ? "ДА" : "НЕТ");
 
         if (!versionsMatch) {
-            logger.info("Validation: FAIL - Version mismatch");
+            logger.info(Messages.LOG_VERSION_MISMATCH);
             logger.info("=================================================");
             DriverManifest manifest = manifestBuilder
                     .driverVersion(actualVersion)
@@ -145,26 +144,26 @@ public class DriverValidator {
 
         // Validate platform
         if (platform != Platform.WINDOWS) {
-            logger.info("Platform validation: FAIL - Only Windows is supported");
+            logger.info("Проверка платформы: ОШИБКА - Поддерживается только Windows");
             logger.info("=================================================");
             return ValidationResult.failure(
                     ValidationStatus.INVALID,
-                    "Only Windows platform is supported"
+                    "Поддерживается только платформа Windows"
             );
         }
 
         // Validate architecture
         if (!architecture.isSupported()) {
-            logger.info("Architecture validation: FAIL - Unsupported architecture");
+            logger.info("Проверка архитектуры: ОШИБКА - Архитектура не поддерживается");
             logger.info("=================================================");
             return ValidationResult.failure(
                     ValidationStatus.INVALID,
-                    "Unsupported architecture: " + architecture
+                    "Неподдерживаемая архитектура: " + architecture
             );
         }
 
         // All checks passed
-        logger.info("Validation: PASS");
+        logger.info(Messages.LOG_VALIDATION_PASS);
         logger.info("=================================================");
 
         DriverManifest manifest = manifestBuilder
@@ -178,15 +177,15 @@ public class DriverValidator {
     /**
      * Quick validation - just check if driver exists.
      *
-     * @param driverPath Path to check
-     * @return true if exists, false otherwise
+     * @param driverPath Путь для проверки
+     * @return true если существует, иначе false
      */
     public static boolean exists(Path driverPath) {
         return Files.exists(driverPath) && Files.isRegularFile(driverPath);
     }
 
     /**
-     * Read the driver file version using PowerShell.
+     * Читает версию файла драйвера через PowerShell.
      */
     private static String readDriverVersion(Path driverPath) {
         try {
@@ -201,33 +200,33 @@ public class DriverValidator {
             int exitCode = process.waitFor();
             if (exitCode != 0) {
                 String error = new String(process.getErrorStream().readAllBytes()).trim();
-                logger.warn("Failed to read driver version: {}", error);
+                logger.warn("Не удалось прочитать версию драйвера: {}", error);
                 return null;
             }
 
             if (version.isEmpty()) {
-                logger.warn("Empty version returned");
+                logger.warn("Получена пустая версия");
                 return null;
             }
 
             return version;
 
         } catch (IOException | InterruptedException e) {
-            logger.warn("Error reading driver version", e);
+            logger.warn("Ошибка чтения версии драйвера", e);
             Thread.currentThread().interrupt();
             return null;
         }
     }
 
     /**
-     * Normalize version string to major.minor.build format.
+     * Нормализует строку версии в формат major.minor.build.
      */
     static String normalizeVersion(String version) {
         if (version == null || version.isEmpty()) {
             return "";
         }
 
-        // Handle version patterns like "146.0.3856" or "146.0.3856.109"
+        // Обрабатываем шаблоны версий типа "146.0.3856" или "146.0.3856.109"
         String[] parts = version.split("\\.");
         if (parts.length >= 3) {
             return parts[0] + "." + parts[1] + "." + parts[2];

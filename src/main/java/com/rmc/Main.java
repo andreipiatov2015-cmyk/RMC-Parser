@@ -1,6 +1,6 @@
 package com.rmc;
 
-import com.rmc.app.ApplicationLifecycle;
+import com.rmc.i18n.Messages;
 import com.rmc.logging.AppLogger;
 import com.rmc.ui.DeveloperWindow;
 import com.rmc.version.VersionService;
@@ -24,25 +24,25 @@ public class Main extends Application {
     @Override
     public void start(Stage primaryStage) {
         AppLogger.logStartupInfo();
-        logger.info("Initializing main window");
+        logger.info("Инициализация главного окна");
 
         try {
-            primaryStage.setTitle("RMC Framework");
+            primaryStage.setTitle(Messages.APP_TITLE);
             primaryStage.setResizable(false);
 
             VBox root = new VBox();
             root.setSpacing(20);
             root.setStyle("-fx-alignment: center; -fx-padding: 40; -fx-background-color: #f5f5f5;");
 
-            Label logoLabel = new Label("RMC Framework");
+            Label logoLabel = new Label(Messages.APP_TITLE);
             logoLabel.setFont(Font.font("Arial", FontWeight.BOLD, 28));
             logoLabel.setStyle("-fx-text-fill: #333333;");
 
-            Label versionLabel = new Label("Version " + VersionService.getCurrentVersionString());
+            Label versionLabel = new Label(Messages.VERSION_PREFIX + " " + VersionService.getCurrentVersionString());
             versionLabel.setFont(Font.font("Arial", FontWeight.NORMAL, 14));
             versionLabel.setStyle("-fx-text-fill: #666666;");
 
-            Button checkUpdatesButton = new Button("Check for Updates");
+            Button checkUpdatesButton = new Button(Messages.BTN_CHECK_UPDATES);
             checkUpdatesButton.setFont(Font.font("Arial", FontWeight.NORMAL, 14));
             checkUpdatesButton.setPrefWidth(180);
             checkUpdatesButton.setPrefHeight(40);
@@ -54,7 +54,7 @@ public class Main extends Application {
             );
 
             checkUpdatesButton.setOnAction(event -> {
-                logger.info("Check for Updates button clicked");
+                logger.info("Нажата кнопка 'Проверить обновления'");
                 checkUpdatesButton.setDisable(true);
 
                 new Thread(() -> {
@@ -67,10 +67,10 @@ public class Main extends Application {
                 }).start();
             });
 
-            // Developer Diagnostics Button
-            Button developerButton = new Button("Developer Diagnostics");
+            // Кнопка диагностики разработчика
+            Button developerButton = new Button(Messages.BTN_DEVELOPER_DIAGNOSTICS);
             developerButton.setFont(Font.font("Arial", FontWeight.NORMAL, 12));
-            developerButton.setPrefWidth(180);
+            developerButton.setPrefWidth(200);
             developerButton.setPrefHeight(30);
             developerButton.setStyle(
                 "-fx-background-color: #2196F3; " +
@@ -80,7 +80,7 @@ public class Main extends Application {
             );
 
             developerButton.setOnAction(event -> {
-                logger.info("Opening Developer Diagnostics Window");
+                logger.info(Messages.LOG_DEV_WINDOW_OPEN);
                 if (developerWindow == null) {
                     developerWindow = new DeveloperWindow();
                 }
@@ -93,32 +93,28 @@ public class Main extends Application {
             primaryStage.setScene(scene);
             primaryStage.show();
 
-            // Show info dialog on first run
+            // Показать информационный диалог при первом запуске
             showInfoDialog();
 
-            logger.info("Main window displayed successfully");
+            logger.info("Главное окно успешно отображено");
 
         } catch (Exception e) {
-            logger.error("Failed to start application", e);
+            logger.error("Не удалось запустить приложение", e);
         }
     }
 
     private void showInfoDialog() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("RMC Framework");
-        alert.setHeaderText("Developer Diagnostics Available");
-        alert.setContentText("Click 'Developer Diagnostics' to access:\n" +
-                "• Live Log Console\n" +
-                "• System Status Panel\n" +
-                "• Driver Management Tools\n" +
-                "• Diagnostic Reports");
+        alert.setTitle(Messages.DIALOG_INFO_TITLE);
+        alert.setHeaderText(Messages.DIALOG_INFO_HEADER);
+        alert.setContentText(Messages.DIALOG_INFO_CONTENT);
         alert.getButtonTypes().setAll(new ButtonType("OK"));
         alert.show();
     }
 
     @Override
     public void stop() {
-        logger.info("Application closing");
+        logger.info("Приложение закрывается");
         if (developerWindow != null) {
             developerWindow.close();
         }

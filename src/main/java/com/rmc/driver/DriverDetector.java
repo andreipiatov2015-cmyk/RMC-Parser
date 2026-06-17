@@ -1,5 +1,6 @@
 package com.rmc.driver;
 
+import com.rmc.i18n.Messages;
 import com.rmc.logging.AppLogger;
 import org.slf4j.Logger;
 
@@ -10,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Detector for Microsoft Edge WebDriver (msedgedriver.exe).
+ * Обнаружитель Microsoft Edge WebDriver (msedgedriver.exe).
  */
 public class DriverDetector {
 
@@ -22,52 +23,52 @@ public class DriverDetector {
     private static final List<Path> DRIVER_SEARCH_PATHS = new ArrayList<>();
 
     static {
-        // Application directory drivers/edge/
+        // Директория приложения drivers/edge/
         String appDir = System.getProperty("user.dir");
         DRIVER_SEARCH_PATHS.add(Paths.get(appDir, DRIVER_SUBDIR, DRIVER_EXECUTABLE));
-        // Alternative locations
+        // Альтернативные расположения
         DRIVER_SEARCH_PATHS.add(Paths.get(appDir, "drivers", DRIVER_EXECUTABLE));
         DRIVER_SEARCH_PATHS.add(Paths.get(appDir, "driver", DRIVER_EXECUTABLE));
         DRIVER_SEARCH_PATHS.add(Paths.get(appDir, DRIVER_EXECUTABLE));
     }
 
     private DriverDetector() {
-        // Utility class
+        // Утилитарный класс
     }
 
     /**
-     * Detect Microsoft Edge WebDriver installation.
+     * Обнаружить установку Microsoft Edge WebDriver.
      *
-     * @return DriverInfo containing path, version, and installation status
+     * @return DriverInfo с путём, версией и статусом установки
      */
     public static DriverInfo detect() {
-        logger.info("Searching Edge WebDriver...");
+        logger.info(Messages.LOG_SEARCHING_DRIVER);
 
         for (Path searchPath : DRIVER_SEARCH_PATHS) {
             File driverFile = searchPath.toFile();
-            logger.debug("Checking path: {}", searchPath);
+            logger.debug(Messages.LOG_CHECKING_PATH, searchPath);
 
             if (driverFile.exists() && driverFile.isFile()) {
                 String version = getFileVersion(searchPath.toString());
                 if (version != null) {
-                    logger.info("Found Edge WebDriver");
-                    logger.info("Path: {}", searchPath);
-                    logger.info("Version: {}", version);
+                    logger.info(Messages.LOG_FOUND_DRIVER);
+                    logger.info("Путь: {}", searchPath);
+                    logger.info("Версия: {}", version);
                     return new DriverInfo(searchPath.toString(), version, true);
                 }
             }
         }
 
-        logger.warn("Edge WebDriver not found");
+        logger.warn(Messages.LOG_NOT_FOUND);
         return DriverInfo.notInstalled();
     }
 
     /**
-     * Get file version using Windows FileVersion API via PowerShell.
-     * Does NOT execute the target application.
+     * Получить версию файла через Windows FileVersion API через PowerShell.
+     * НЕ выполняет целевое приложение.
      *
-     * @param filePath Path to the file
-     * @return Version string or null if unable to retrieve
+     * @param filePath Путь к файлу
+     * @return Строка версии или null, если не удалось получить
      */
     private static String getFileVersion(String filePath) {
         try {
@@ -90,15 +91,15 @@ public class DriverDetector {
                 return version;
             }
         } catch (Exception e) {
-            logger.debug("Could not get file version for {}: {}", filePath, e.getMessage());
+            logger.debug("Не удалось получить версию файла {}: {}", filePath, e.getMessage());
         }
         return null;
     }
 
     /**
-     * Get all search paths for driver detection.
+     * Получить все пути поиска для обнаружения драйвера.
      *
-     * @return List of paths that will be searched
+     * @return Список путей для поиска
      */
     public static List<Path> getSearchPaths() {
         return new ArrayList<>(DRIVER_SEARCH_PATHS);

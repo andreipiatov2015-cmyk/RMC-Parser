@@ -1,6 +1,7 @@
 package com.rmc.update;
 
 import com.rmc.config.UpdateConfig;
+import com.rmc.i18n.Messages;
 import com.rmc.logging.AppLogger;
 import com.rmc.model.UpdateCheckResult;
 import org.slf4j.Logger;
@@ -20,22 +21,20 @@ public class UpdateService {
     private static final int READ_TIMEOUT = 15000;
 
     public UpdateCheckResult checkForUpdates() {
-        logger.info("=================================================");
-        logger.info("Update Service");
-        logger.info("=================================================");
+        logger.info(Messages.LOG_UPDATE_SERVICE);
 
         long startTime = System.currentTimeMillis();
 
         try {
             UpdateConfig config = UpdateConfig.load();
-            logger.info("Loading configuration...");
-            logger.info("JSON URL: {}", config.getJsonUrl());
+            logger.info(Messages.LOG_LOADING_CONFIG);
+            logger.info(Messages.LOG_JSON_URL, config.getJsonUrl());
 
             return downloadLatestJson(config.getJsonUrl(), startTime);
 
         } catch (IOException e) {
-            logger.error("Failed to load configuration", e);
-            return UpdateCheckResult.error(-1, "Configuration error: " + e.getMessage(), e);
+            logger.error(Messages.LOG_CONFIG_ERROR_PREFIX + e.getMessage(), e);
+            return UpdateCheckResult.error(-1, Messages.LOG_CONFIG_ERROR_PREFIX + e.getMessage(), e);
         }
     }
 
@@ -43,7 +42,7 @@ public class UpdateService {
         HttpURLConnection connection = null;
         try {
             URL url = new URL(jsonUrl);
-            logger.info("Connecting to: {}", jsonUrl);
+            logger.info(Messages.LOG_CONNECTING, jsonUrl);
             
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
@@ -55,38 +54,38 @@ public class UpdateService {
             long responseLength = connection.getContentLengthLong();
             long downloadTime = System.currentTimeMillis() - startTime;
 
-            logger.info("HTTP Status: {}", httpStatus);
-            logger.info("Response Length: {} bytes", responseLength);
-            logger.info("Download Time: {} ms", downloadTime);
+            logger.info(Messages.LOG_HTTP_STATUS, httpStatus);
+            logger.info(Messages.LOG_RESPONSE_LENGTH, responseLength);
+            logger.info(Messages.LOG_DOWNLOAD_TIME, downloadTime);
 
             if (httpStatus == 200) {
-                logger.info("Connection successful");
+                logger.info(Messages.LOG_CONNECTION_SUCCESS);
                 String jsonContent = readResponseBody(connection);
-                logger.info("JSON Content:");
+                logger.info("JSON содержимое:");
                 logger.info(jsonContent);
-                logger.info("JSON downloaded successfully");
+                logger.info(Messages.LOG_JSON_DOWNLOADED);
             } else {
                 String responseBody = readResponseBody(connection);
-                logger.warn("Unexpected HTTP Status: {}", httpStatus);
-                logger.warn("Response Body: {}", responseBody);
+                logger.warn(Messages.LOG_UNEXPECTED_STATUS, httpStatus);
+                logger.warn(Messages.LOG_RESPONSE_BODY, responseBody);
             }
 
-            logger.info("Update check completed");
-            logger.info("=================================================");
+            logger.info(Messages.LOG_UPDATE_CHECK_COMPLETE);
+            logger.info(Messages.LOG_UPDATE_CHECK_END);
 
             return UpdateCheckResult.success(httpStatus, responseLength);
 
         } catch (SocketTimeoutException e) {
-            logger.error("Connection timeout", e);
-            return UpdateCheckResult.error(-1, "Connection timeout", e);
+            logger.error(Messages.LOG_TIMEOUT, e);
+            return UpdateCheckResult.error(-1, Messages.LOG_TIMEOUT, e);
 
         } catch (UnknownHostException e) {
-            logger.error("Unknown host - network unavailable", e);
-            return UpdateCheckResult.error(-1, "UnknownHostException: " + e.getMessage(), e);
+            logger.error(Messages.LOG_UNKNOWN_HOST, e);
+            return UpdateCheckResult.error(-1, Messages.LOG_UNKNOWN_HOST, e);
 
         } catch (IOException e) {
-            logger.error("Connection error", e);
-            return UpdateCheckResult.error(-1, "IOException: " + e.getMessage(), e);
+            logger.error(Messages.LOG_CONNECTION_ERROR, e);
+            return UpdateCheckResult.error(-1, Messages.LOG_CONNECTION_ERROR, e);
 
         } finally {
             if (connection != null) {
@@ -100,7 +99,7 @@ public class UpdateService {
             int responseCode = connection.getResponseCode();
             java.io.InputStream stream = responseCode >= 400 ? connection.getErrorStream() : connection.getInputStream();
             if (stream == null) {
-                return "No content";
+                return "Нет содержимого";
             }
             
             StringBuilder content = new StringBuilder();
@@ -112,8 +111,8 @@ public class UpdateService {
             }
             return content.toString();
         } catch (IOException e) {
-            logger.warn("Could not read response body", e);
-            return "Unable to read response body";
+            logger.warn("Не удалось прочитать тело ответа", e);
+            return "Не удалось прочитать тело ответа";
         }
     }
 }
