@@ -6,28 +6,16 @@ import java.util.Properties;
 
 public class UpdateConfig {
 
-    private final String owner;
-    private final String repo;
-    private final String apiUrl;
+    private final String jsonUrl;
     private final String channel;
 
-    public UpdateConfig(String owner, String repo, String apiUrl, String channel) {
-        this.owner = owner;
-        this.repo = repo;
-        this.apiUrl = apiUrl;
+    public UpdateConfig(String jsonUrl, String channel) {
+        this.jsonUrl = jsonUrl;
         this.channel = channel;
     }
 
-    public String getOwner() {
-        return owner;
-    }
-
-    public String getRepo() {
-        return repo;
-    }
-
-    public String getApiUrl() {
-        return apiUrl;
+    public String getJsonUrl() {
+        return jsonUrl;
     }
 
     public String getChannel() {
@@ -44,9 +32,7 @@ public class UpdateConfig {
         }
 
         return new UpdateConfig(
-                props.getProperty("github.owner"),
-                props.getProperty("github.repo"),
-                props.getProperty("github.api"),
+                props.getProperty("update.json.url"),
                 props.getProperty("update.channel")
         );
     }
