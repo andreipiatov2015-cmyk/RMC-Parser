@@ -220,17 +220,19 @@ public class Messages {
     // ==================== WebDriverManager ====================
     
     public static final String LOG_WDM_HEADER = "==============================";
-    public static final String LOG_WDM_CHECK_DRIVER = "Проверка драйвера";
-    public static final String LOG_WDM_EDGE_DETECTED = "Обнаружен Microsoft Edge";
-    public static final String LOG_WDM_CHECKING_WDM = "Проверка WebDriver...";
+    public static final String LOG_WDM_CHECK_EDGE = "Проверка Microsoft Edge";
+    public static final String LOG_WDM_EDGE_FOUND = "Microsoft Edge найден";
+    public static final String LOG_WDM_EDGE_VERSION = "Версия браузера:\n{}";
     public static final String LOG_WDM_DRIVER_MISSING = "WebDriver отсутствует.";
     public static final String LOG_WDM_STARTING_WDM = "Запуск WebDriverManager...";
-    public static final String LOG_WDM_RESOLVING_VERSION = "Определение подходящей версии...";
-    public static final String LOG_WDM_DOWNLOADING = "Загрузка драйвера...";
-    public static final String LOG_WDM_DOWNLOAD_COMPLETE = "Загрузка завершена.";
+    public static final String LOG_WDM_WDM_AUTO_DETECT = "WebDriverManager самостоятельно определяет подходящий драйвер...";
+    public static final String LOG_WDM_STARTING_DOWNLOAD = "Начата загрузка...";
+    public static final String LOG_WDM_DOWNLOAD_COMPLETE = "Загрузка успешно завершена.";
+    public static final String LOG_WDM_DRIVER_SAVED = "Драйвер сохранён:\n{}";
     public static final String LOG_WDM_CHECKING_INSTALLED = "Проверка установленного драйвера...";
+    public static final String LOG_WDM_DRIVER_FOUND = "Драйвер найден.";
     public static final String LOG_WDM_VERSION_MATCH = "Версия совпадает.";
-    public static final String LOG_WDM_DRIVER_READY = "Драйвер готов.";
+    public static final String LOG_WDM_SUBSYSTEM_READY = "Подсистема готова.";
     public static final String LOG_WDM_DRIVER_ALREADY_CURRENT = "Драйвер уже соответствует установленной версии Microsoft Edge.";
     public static final String LOG_WDM_SUCCESS = "Драйвер Microsoft Edge успешно установлен.";
     public static final String LOG_WDM_NO_EDGE = "Microsoft Edge не установлен. Установите Microsoft Edge для продолжения.";

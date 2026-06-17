@@ -1,7 +1,7 @@
 package com.rmc.driver.validation;
 
-import com.rmc.driver.resolver.Architecture;
-import com.rmc.driver.resolver.Platform;
+import com.rmc.driver.system.Architecture;
+import com.rmc.driver.system.Platform;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
