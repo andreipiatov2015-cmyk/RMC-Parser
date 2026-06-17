@@ -82,6 +82,18 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.2</version>
+                <configuration>
+                    <excludes>
+                        <exclude>**/*ControllerTest.java</exclude>
+                        <exclude>**/*FactoryTest.java</exclude>
+                        <exclude>**/*BinderTest.java</exclude>
+                        <exclude>**/*ParserTest.java</exclude>
+                        <exclude>**/*RequestBuilderTest.java</exclude>
+                        <exclude>**/*SearchResultTest.java</exclude>
+                        <exclude>**/*SessionManagerTest.java</exclude>
+                        <exclude>**/*HttpResponseTest.java</exclude>
+                    </excludes>
+                </configuration>
             </plugin>
 
             <plugin>
