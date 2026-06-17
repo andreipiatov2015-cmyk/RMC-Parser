@@ -1,10 +1,10 @@
 package com.rmc.download;
 
-import com.rmc.driver.DriverDetector;
-import com.rmc.driver.DriverInfo;
-import com.rmc.driver.DriverService;
 import com.rmc.driver.EdgeDetector;
 import com.rmc.driver.EdgeInfo;
+import com.rmc.driver.resolver.DriverDownloadInfo;
+import com.rmc.driver.resolver.DriverResolver;
+import com.rmc.driver.resolver.DriverResolverException;
 import com.rmc.logging.AppLogger;
 import org.slf4j.Logger;
 
@@ -14,14 +14,14 @@ import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.file.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
  * Service for downloading Microsoft Edge WebDriver.
  * Downloads the correct version matching the installed Edge browser.
+ * 
+ * <p>Uses DriverResolver to obtain download URLs instead of building them directly.</p>
  */
 public class DownloadService {
 
@@ -31,10 +31,6 @@ public class DownloadService {
     private static final int READ_TIMEOUT = 30000;
     private static final int BUFFER_SIZE = 8192;
     
-    private static final String DRIVER_URL_TEMPLATE = 
-        "https://msedgedriver.azureedge.net/%s/edgedriver_win64.zip";
-    
-    private static final String DRIVER_FILENAME = "msedgedriver.exe";
     private static final String VERSION_FILENAME = "version.txt";
 
     private DownloadService() {
@@ -62,13 +58,15 @@ public class DownloadService {
             String edgeVersion = edgeInfo.getVersion();
             logger.info("Detected Edge version: {}", edgeVersion);
 
-            // Step 2: Extract major.minor.patch from version
-            String driverVersion = extractDriverVersion(edgeVersion);
-            logger.info("Driver version to download: {}", driverVersion);
+            // Step 2: Resolve download info using DriverResolver
+            DriverDownloadInfo downloadInfo = DriverResolver.resolve(edgeVersion);
+            String driverVersion = downloadInfo.getDriverVersion();
+            String downloadUrl = downloadInfo.getDownloadUrl();
+            String driverFileName = downloadInfo.getDriverFileName();
 
             // Step 3: Check if driver already exists
             Path driverDir = getDriverDirectory();
-            Path existingDriver = driverDir.resolve(DRIVER_FILENAME);
+            Path existingDriver = driverDir.resolve(driverFileName);
             if (Files.exists(existingDriver)) {
                 String existingVersion = readInstalledVersion(driverDir);
                 if (driverVersion.equals(existingVersion)) {
@@ -77,27 +75,28 @@ public class DownloadService {
                 }
             }
 
-            // Step 4: Build download URL
-            String downloadUrl = buildDownloadUrl(driverVersion);
             logger.info("Download URL: {}", downloadUrl);
 
-            // Step 5: Download ZIP archive
-            Path zipPath = downloadFile(downloadUrl, edgeVersion);
+            // Step 4: Download ZIP archive
+            Path zipPath = downloadFile(downloadUrl);
             if (zipPath == null) {
                 return DownloadResult.httpError(404);
             }
 
-            // Step 6: Extract and install driver
-            Path installedDriver = extractAndInstall(zipPath, driverVersion);
+            // Step 5: Extract and install driver
+            Path installedDriver = extractAndInstall(zipPath, driverVersion, downloadInfo);
             
-            // Step 7: Cleanup
-            cleanup(zipPath, driverDir);
+            // Step 6: Cleanup
+            cleanup(zipPath);
 
             logger.info("Finished successfully");
             logger.info("=================================================");
 
             return DownloadResult.success(installedDriver.toString(), driverVersion);
 
+        } catch (DriverResolverException e) {
+            logger.error("Failed to resolve driver: {}", e.getMessage());
+            return DownloadResult.resolverError(e.getErrorType().name(), e.getMessage());
         } catch (Exception e) {
             logger.error("Download failed", e);
             return handleException(e);
@@ -105,32 +104,9 @@ public class DownloadService {
     }
 
     /**
-     * Extract major.minor.patch from Edge version string.
-     * Example: "146.0.3856.109" -> "146.0.3856"
-     */
-    static String extractDriverVersion(String edgeVersion) {
-        if (edgeVersion == null || edgeVersion.isEmpty()) {
-            return "";
-        }
-        
-        String[] parts = edgeVersion.split("\\.");
-        if (parts.length >= 3) {
-            return parts[0] + "." + parts[1] + "." + parts[2];
-        }
-        return edgeVersion;
-    }
-
-    /**
-     * Build the download URL for the given version.
-     */
-    private static String buildDownloadUrl(String version) {
-        return String.format(DRIVER_URL_TEMPLATE, version);
-    }
-
-    /**
      * Download file from URL with progress logging.
      */
-    private static Path downloadFile(String urlString, String version) {
+    private static Path downloadFile(String urlString) {
         HttpURLConnection connection = null;
         InputStream input = null;
         FileOutputStream output = null;
@@ -154,7 +130,7 @@ public class DownloadService {
             long totalSize = connection.getContentLengthLong();
             
             Path tempDir = Files.createTempDirectory("rmc-driver-");
-            Path zipPath = tempDir.resolve("edgedriver_win64.zip");
+            Path zipPath = tempDir.resolve("edgedriver.zip");
             
             input = connection.getInputStream();
             output = new FileOutputStream(zipPath.toFile());
@@ -201,7 +177,7 @@ public class DownloadService {
     /**
      * Extract ZIP and install driver to the driver directory.
      */
-    private static Path extractAndInstall(Path zipPath, String version) throws IOException {
+    private static Path extractAndInstall(Path zipPath, String version, DriverDownloadInfo downloadInfo) throws IOException {
         logger.info("Extracting archive...");
         
         Path driverDir = getDriverDirectory();
@@ -209,6 +185,7 @@ public class DownloadService {
         
         Path extractDir = Files.createTempDirectory("rmc-extract-");
         Path driverInZip = null;
+        String driverFileName = downloadInfo.getDriverFileName();
         
         try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(zipPath))) {
             ZipEntry entry;
@@ -221,7 +198,7 @@ public class DownloadService {
                     Files.createDirectories(targetPath.getParent());
                     Files.copy(zis, targetPath);
                     
-                    if (entry.getName().endsWith(DRIVER_FILENAME)) {
+                    if (entry.getName().endsWith(driverFileName)) {
                         driverInZip = targetPath;
                     }
                 }
@@ -230,11 +207,11 @@ public class DownloadService {
         }
         
         if (driverInZip == null) {
-            throw new IOException("msedgedriver.exe not found in ZIP archive");
+            throw new IOException(driverFileName + " not found in ZIP archive");
         }
         
         logger.info("Copying driver to {}", driverDir);
-        Path installedDriver = driverDir.resolve(DRIVER_FILENAME);
+        Path installedDriver = driverDir.resolve(driverFileName);
         Files.copy(driverInZip, installedDriver, StandardCopyOption.REPLACE_EXISTING);
         logger.info("Driver copied");
         
@@ -273,7 +250,7 @@ public class DownloadService {
     /**
      * Cleanup temporary files.
      */
-    private static void cleanup(Path zipPath, Path driverDir) {
+    private static void cleanup(Path zipPath) {
         logger.info("Removing temporary files...");
         try {
             // Remove parent temp directory (contains the zip)
