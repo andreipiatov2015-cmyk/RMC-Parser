@@ -117,7 +117,9 @@ public class DjangoAuthenticationProvider {
             
             if (hasSession) {
                 logger.info(LOG_AUTH_SUCCESS);
-                return DjangoAuthResult.success(postResponse.getStatusCode(), new ArrayList<>(newCookies));
+                // Возвращаем HttpClientService для сохранения в ApplicationState
+                return DjangoAuthResult.success(postResponse.getStatusCode(), 
+                        new ArrayList<>(newCookies), httpClient);
             } else {
                 logger.warn(LOG_AUTH_FAILED);
                 logger.warn(LOG_NO_SESSION);
@@ -296,26 +298,28 @@ public class DjangoAuthenticationProvider {
         private final List<String> receivedCookies;
         private final String errorMessage;
         private final String responseBody;
+        private final HttpClientService httpClient;
         
         private DjangoAuthResult(boolean success, int statusCode, List<String> receivedCookies,
-                               String errorMessage, String responseBody) {
+                               String errorMessage, String responseBody, HttpClientService httpClient) {
             this.success = success;
             this.statusCode = statusCode;
             this.receivedCookies = receivedCookies;
             this.errorMessage = errorMessage;
             this.responseBody = responseBody;
+            this.httpClient = httpClient;
         }
         
-        public static DjangoAuthResult success(int statusCode, List<String> cookies) {
-            return new DjangoAuthResult(true, statusCode, cookies, null, null);
+        public static DjangoAuthResult success(int statusCode, List<String> cookies, HttpClientService httpClient) {
+            return new DjangoAuthResult(true, statusCode, cookies, null, null, httpClient);
         }
         
         public static DjangoAuthResult failure(String errorMessage) {
-            return new DjangoAuthResult(false, 0, Collections.emptyList(), errorMessage, null);
+            return new DjangoAuthResult(false, 0, Collections.emptyList(), errorMessage, null, null);
         }
         
         public static DjangoAuthResult failure(String errorMessage, String responseBody) {
-            return new DjangoAuthResult(false, 0, Collections.emptyList(), errorMessage, responseBody);
+            return new DjangoAuthResult(false, 0, Collections.emptyList(), errorMessage, responseBody, null);
         }
         
         public boolean isSuccess() { return success; }

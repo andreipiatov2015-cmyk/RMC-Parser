@@ -65,7 +65,7 @@ public class SessionManager {
     /**
      * Получить CookieManager.
      */
-    CookieManager getCookieManager() {
+    public CookieManager getCookieManager() {
         return cookieManager;
     }
     
