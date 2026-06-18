@@ -70,6 +70,20 @@ public class SessionManager {
     }
     
     /**
+     * Получить все cookies из хранилища.
+     * 
+     * @return список всех cookies
+     */
+    public List<HttpCookie> getAllCookies() {
+        try {
+            return cookieManager.getCookieStore().getCookies();
+        } catch (Exception e) {
+            logger.warn("Failed to get all cookies: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+    
+    /**
      * Добавить cookie для URI.
      * 
      * @param uri URI
