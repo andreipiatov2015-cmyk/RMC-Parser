@@ -327,5 +327,6 @@ public class DjangoAuthenticationProvider {
         public List<String> getReceivedCookies() { return receivedCookies; }
         public Optional<String> getErrorMessage() { return Optional.ofNullable(errorMessage); }
         public Optional<String> getResponseBody() { return Optional.ofNullable(responseBody); }
+        public Optional<HttpClientService> getHttpClient() { return Optional.ofNullable(httpClient); }
     }
 }

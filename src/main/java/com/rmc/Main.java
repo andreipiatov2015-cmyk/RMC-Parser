@@ -2,7 +2,7 @@ package com.rmc;
 
 import com.rmc.i18n.Messages;
 import com.rmc.logging.AppLogger;
-import com.rmc.ui.main.MainApplicationWindow;
+import com.rmc.ui.dashboard.DashboardView;
 import com.rmc.version.VersionService;
 import javafx.application.Application;
 import javafx.scene.Scene;
@@ -15,7 +15,7 @@ import org.slf4j.Logger;
 public class Main extends Application {
 
     private static final Logger logger = AppLogger.getLogger();
-    private MainApplicationWindow mainWindow;
+    private DashboardView dashboardView;
 
     @Override
     public void start(Stage primaryStage) {
@@ -25,9 +25,10 @@ public class Main extends Application {
         try {
             primaryStage.setTitle(Messages.APP_TITLE);
             
-            mainWindow = new MainApplicationWindow();
+            dashboardView = new DashboardView();
             
-            Scene scene = new Scene(mainWindow, 1000, 700);
+            Scene scene = new Scene(dashboardView, 1200, 800);
+            scene.getStylesheets().add("/styles/dashboard.css");
             primaryStage.setScene(scene);
             primaryStage.show();
 
@@ -41,9 +42,6 @@ public class Main extends Application {
     @Override
     public void stop() {
         logger.info("Приложение закрывается");
-        if (mainWindow != null) {
-            mainWindow.close();
-        }
     }
 
     public static void main(String[] args) {

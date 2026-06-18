@@ -1,0 +1,258 @@
+/* RMC Framework - Modern Dashboard Styles */
+
+/* Color Palette */
+.root {
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 14px;
+    -fx-background-color: #F5F7FA;
+}
+
+/* ========== Main Layout ========== */
+.dashboard-view {
+    -fx-background-color: #F5F7FA;
+}
+
+.header-pane {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0E0E0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.content-area {
+    -fx-padding: 20;
+    -fx-spacing: 16;
+}
+
+.main-content {
+    -fx-spacing: 16;
+    -fx-pref-height: 500;
+}
+
+.left-panel {
+    -fx-pref-width: 280;
+}
+
+.center-panel {
+    -fx-pref-width: 800;
+}
+
+.bottom-panel {
+    -fx-pref-height: 200;
+    -fx-min-height: 150;
+}
+
+/* ========== Cards ========== */
+.card {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);
+    -fx-border-radius: 12;
+}
+
+.card-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2C3E50;
+    -fx-padding: 0 0 10 0;
+}
+
+/* ========== Login Card ========== */
+.login-card {
+    -fx-pref-width: 280;
+}
+
+.form-field {
+    -fx-background-color: #F8F9FA;
+    -fx-border-color: #DEE2E6;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 10;
+    -fx-font-size: 14px;
+}
+
+.form-field:focused {
+    -fx-border-color: #4CAF50;
+    -fx-background-color: #FFFFFF;
+}
+
+.primary-button {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 12 24;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.primary-button:hover {
+    -fx-background-color: #43A047;
+}
+
+.primary-button:pressed {
+    -fx-background-color: #388E3C;
+}
+
+.primary-button:disabled {
+    -fx-background-color: #A5D6A7;
+}
+
+.secondary-button {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #4CAF50;
+    -fx-border-color: #4CAF50;
+    -fx-border-width: 2;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 10 22;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-cursor: hand;
+}
+
+.secondary-button:hover {
+    -fx-background-color: #E8F5E9;
+}
+
+.login-status {
+    -fx-font-size: 13px;
+    -fx-padding: 5 0;
+}
+
+.auth-status-success {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #4CAF50;
+}
+
+.user-name {
+    -fx-font-size: 14px;
+    -fx-text-fill: #2C3E50;
+}
+
+.login-time {
+    -fx-font-size: 12px;
+    -fx-text-fill: #7F8C8D;
+}
+
+/* ========== Status Card ========== */
+.status-card {
+    -fx-pref-width: 280;
+}
+
+.status-text {
+    -fx-font-size: 14px;
+    -fx-text-fill: #2C3E50;
+}
+
+/* ========== Filter Container ========== */
+.filter-container {
+    -fx-pref-width: 800;
+}
+
+.placeholder-text {
+    -fx-font-size: 16px;
+    -fx-text-fill: #7F8C8D;
+}
+
+.hint-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: #BDC3C7;
+}
+
+/* ========== Log Pane ========== */
+.log-pane {
+    -fx-pref-height: 200;
+}
+
+.log-list {
+    -fx-background-color: #1E1E1E;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+}
+
+.log-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #D4D4D4;
+    -fx-font-family: "Consolas", "Monaco", monospace;
+    -fx-font-size: 12px;
+    -fx-padding: 4 10;
+}
+
+.log-list .list-cell:odd {
+    -fx-background-color: #252526;
+}
+
+.search-field {
+    -fx-background-color: #F8F9FA;
+    -fx-border-color: #DEE2E6;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12;
+}
+
+.search-field:focused {
+    -fx-border-color: #4CAF50;
+}
+
+.toolbar-button {
+    -fx-background-color: #F8F9FA;
+    -fx-text-fill: #2C3E50;
+    -fx-border-color: #DEE2E6;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 16;
+    -fx-cursor: hand;
+}
+
+.toolbar-button:hover {
+    -fx-background-color: #E9ECEF;
+}
+
+/* ========== Header ========== */
+.app-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2C3E50;
+}
+
+.version-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #7F8C8D;
+}
+
+.header-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #2C3E50;
+    -fx-padding: 8 16;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+    -fx-background-radius: 6;
+}
+
+.header-button:hover {
+    -fx-background-color: #E9ECEF;
+}
+
+/* ========== Misc ========== */
+.vbox {
+    -fx-spacing: 12;
+}
+
+.hbox {
+    -fx-spacing: 10;
+}
+
+/* Scroll bar styling */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-radius: 4;
+    -fx-background-color: #BDC3C7;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #95A5A6;
+}
