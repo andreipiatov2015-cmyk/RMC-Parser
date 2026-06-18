@@ -64,11 +64,27 @@ public class FilterParser {
         try {
             Document document = Jsoup.parse(html);
             
+            // Сначала ищем #modern_filter_form
+            Element filterForm = document.selectFirst("#modern_filter_form");
+            
+            // Если не нашли, ищем любую форму с фильтрами
+            if (filterForm == null) {
+                filterForm = document.selectFirst("form[class*=filter]");
+            }
+            
+            // Если всё ещё не нашли, используем весь документ
+            if (filterForm == null) {
+                filterForm = document;
+                logger.info("Форма #modern_filter_form не найдена, используется весь документ");
+            } else {
+                logger.info("Найдена форма фильтров");
+            }
+            
             List<FilterDefinition> filters = new ArrayList<>();
             Map<String, String> labelMap = buildLabelMap(document);
             
             // Парсим select элементы
-            Elements selectElements = document.select("select");
+            Elements selectElements = filterForm.select("select");
             for (Element select : selectElements) {
                 FilterDefinition filter = parseSelectElement(select, labelMap);
                 if (filter != null) {
@@ -77,7 +93,7 @@ public class FilterParser {
             }
             
             // Парсим input элементы
-            Elements inputElements = document.select("input");
+            Elements inputElements = filterForm.select("input");
             for (Element input : inputElements) {
                 FilterDefinition filter = parseInputElement(input, labelMap);
                 if (filter != null) {
@@ -86,7 +102,7 @@ public class FilterParser {
             }
             
             // Парсим textarea элементы
-            Elements textareaElements = document.select("textarea");
+            Elements textareaElements = filterForm.select("textarea");
             for (Element textarea : textareaElements) {
                 FilterDefinition filter = parseTextareaElement(textarea, labelMap);
                 if (filter != null) {
