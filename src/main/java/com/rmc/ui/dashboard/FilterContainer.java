@@ -1,7 +1,8 @@
 package com.rmc.ui.dashboard;
 
-import com.rmc.filters.loader.FilterPageLoader;
-import com.rmc.filters.parser.FilterParser;
+import com.rmc.filters.model.FilterGroup;
+import com.rmc.filters.parser.FilterDefinition;
+import com.rmc.filters.service.FilterService;
 import com.rmc.http.HttpClientService;
 import com.rmc.state.ApplicationState;
 import com.rmc.ui.dynamic.DynamicFilterPane;
@@ -22,6 +23,7 @@ public class FilterContainer extends VBox {
     private VBox placeholderPane;
     private DynamicFilterPane dynamicFilterPane;
     private boolean filtersLoaded = false;
+    private FilterService filterService;
     
     public FilterContainer() {
         getStyleClass().add("card");
@@ -78,36 +80,29 @@ public class FilterContainer extends VBox {
         new Thread(() -> {
             try {
                 HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
-                FilterPageLoader loader = FilterPageLoader.builder()
-                        .httpClient(httpClient)
-                        .baseUrl(RMC_BASE_URL)
-                        .build();
+                filterService = new FilterService(httpClient, RMC_BASE_URL);
                 
-                var result = loader.load();
+                var result = filterService.loadFilters();
                 
                 javafx.application.Platform.runLater(() -> {
                     getChildren().remove(progress);
                     
                     if (result.isSuccess()) {
-                        String html = result.getHtml();
-                        if (html != null && !html.isEmpty()) {
-                            FilterParser.ParseResult parseResult = FilterParser.parse(html);
-                            
-                            if (parseResult.isSuccess()) {
-                                int filterCount = parseResult.getFilters().size();
-                                dynamicFilterPane.loadFilters(parseResult.getFilters());
-                                dynamicFilterPane.setVisible(true);
-                                filtersLoaded = true;
-                            } else {
-                                showError("Ошибка парсинга: " + parseResult.getErrorMessage().orElse("unknown"));
-                                placeholderPane.setVisible(true);
-                            }
-                        } else {
-                            showError("Пустой HTML от сервера");
-                            placeholderPane.setVisible(true);
+                        // Загружаем фильтры в UI
+                        if (!result.getGroups().isEmpty()) {
+                            FilterGroup mainGroup = result.getGroups().get(0);
+                            dynamicFilterPane.loadFilters(mainGroup.getFilters());
+                        }
+                        dynamicFilterPane.setVisible(true);
+                        filtersLoaded = true;
+                        
+                        // Обновляем статус в Header
+                        DashboardView view = (DashboardView) getScene().getRoot();
+                        if (view != null && view.getController() != null) {
+                            view.getController().logInfo("Загружено фильтров: " + result.getFilterCount());
                         }
                     } else {
-                        showError("Ошибка загрузки: " + result.getErrorMessage().orElse("unknown"));
+                        showError("Ошибка: " + result.getErrorMessage().orElse("unknown"));
                         placeholderPane.setVisible(true);
                     }
                 });
@@ -131,5 +126,9 @@ public class FilterContainer extends VBox {
     
     public boolean isFiltersLoaded() {
         return filtersLoaded;
+    }
+    
+    public DynamicFilterPane getDynamicFilterPane() {
+        return dynamicFilterPane;
     }
 }
