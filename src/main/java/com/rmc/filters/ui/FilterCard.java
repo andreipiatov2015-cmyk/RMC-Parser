@@ -46,9 +46,11 @@ public class FilterCard extends VBox {
     
     private void setupCard() {
         getStyleClass().add("filter-card");
-        setSpacing(8);
-        setPadding(new Insets(12));
+        setSpacing(4);
+        setPadding(new Insets(10));
         setAlignment(Pos.TOP_LEFT);
+        setPrefHeight(70);
+        setMaxHeight(70);
         
         // Title
         String title = definition.getCaption() != null ? definition.getCaption() : definition.getName();
