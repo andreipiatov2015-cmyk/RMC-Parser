@@ -1,36 +1,34 @@
 package com.rmc.ui.dashboard;
 
-import com.rmc.i18n.Messages;
 import com.rmc.state.ApplicationState;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.layout.*;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 
 /**
  * Main Dashboard View - modern single-window layout.
  * 
  * <p>Layout:</p>
  * <pre>
- * ┌─────────────────────────────────────────────────────┐
- * │  HEADER (App title, buttons)                        │
- * ├──────────────┬──────────────────────────────────────┤
- * │  LEFT PANEL │  CENTER PANEL                       │
- * │  - LoginCard│  - FilterContainer                  │
- * │  - StatusCard                                      │
- * ├──────────────┴──────────────────────────────────────┤
- * │  BOTTOM PANEL - LogPane                            │
- * └─────────────────────────────────────────────────────┘
+ * ┌──────────────────────────────────────────────────────────┐
+ * │  HEADER (☰, App title)                                    │
+ * ├────────────┬─────────────────────────────────────────────┤
+ * │ DASHBOARD  │  FILTER AREA (full width, compact cards)    │
+ * │ - User     │  ┌─────────────────────────────────────────┐│
+ * │ - Server   │  │ Filter 1  │ Filter 2  │ Filter 3      ││
+ * │ - Stats... │  │ Filter 4  │ Filter 5  │ Filter 6...    ││
+ * │            │  └─────────────────────────────────────────┘│
+ * │            │  ┌─────────────────────────────────────────┐│
+ * │            │  │ RESULTS PANEL                           ││
+ * │            │  └─────────────────────────────────────────┘│
+ * └────────────┴─────────────────────────────────────────────┘
  * </pre>
  */
 public class DashboardView extends BorderPane {
     
     private final HeaderPane headerPane;
-    private final LoginCard loginCard;
-    private final StatusCard statusCard;
+    private final DashboardPanel dashboardPanel;
     private final FilterContainer filterContainer;
-    private final LogPane logPane;
+    private final ResultsPanel resultsPanel;
     private final DashboardController controller;
     
     public DashboardView() {
@@ -38,22 +36,17 @@ public class DashboardView extends BorderPane {
         
         // Create components
         headerPane = new HeaderPane();
-        loginCard = new LoginCard();
-        statusCard = new StatusCard();
+        dashboardPanel = new DashboardPanel();
         filterContainer = new FilterContainer();
-        logPane = new LogPane();
+        resultsPanel = new ResultsPanel();
         controller = new DashboardController(this);
         
         // Layout
         setupLayout();
         
-        // Initial status update
-        updateStatus();
-        
         // Listen for auth state changes
         ApplicationState.getInstance().addAuthStateListener(event -> {
             controller.onAuthStateChanged();
-            updateStatus();
         });
     }
     
@@ -61,69 +54,67 @@ public class DashboardView extends BorderPane {
         // Top: Header
         setTop(headerPane);
         
-        // Left panel with cards
-        VBox leftPanel = new VBox();
-        leftPanel.setSpacing(16);
-        leftPanel.setPadding(new Insets(0, 16, 0, 0));
-        leftPanel.getStyleClass().add("left-panel");
+        // Center: Main content area
+        VBox centerContent = new VBox();
+        centerContent.getStyleClass().add("center-content");
+        centerContent.setSpacing(0);
         
-        VBox.setVgrow(loginCard, Priority.NEVER);
-        VBox.setVgrow(statusCard, Priority.ALWAYS);
-        
-        leftPanel.getChildren().addAll(loginCard, statusCard);
-        
-        // Center panel
-        VBox centerPanel = new VBox();
-        centerPanel.getStyleClass().add("center-panel");
+        // Filter container - takes remaining space
+        VBox filterArea = new VBox();
+        filterArea.getStyleClass().add("filter-area");
         VBox.setVgrow(filterContainer, Priority.ALWAYS);
-        centerPanel.getChildren().add(filterContainer);
         
-        // Main content: left + center
+        // Results panel at bottom
+        resultsPanel.setVisible(false);
+        
+        filterArea.getChildren().addAll(filterContainer, resultsPanel);
+        VBox.setVgrow(filterContainer, Priority.ALWAYS);
+        
+        centerContent.getChildren().add(filterArea);
+        
+        // Main content: left panel + center
         HBox mainContent = new HBox();
         mainContent.getStyleClass().add("main-content");
-        mainContent.getChildren().addAll(leftPanel, centerPanel);
-        HBox.setHgrow(centerPanel, Priority.ALWAYS);
+        mainContent.setSpacing(16);
+        mainContent.setPadding(new Insets(16));
         
-        // Bottom: Log pane
-        VBox bottomPanel = new VBox();
-        bottomPanel.getStyleClass().add("bottom-panel");
-        bottomPanel.getChildren().add(logPane);
-        VBox.setVgrow(logPane, Priority.NEVER);
+        // Dashboard panel
+        dashboardPanel.setPrefWidth(200);
         
-        // Container for main content and bottom
-        VBox contentArea = new VBox();
-        contentArea.getStyleClass().add("content-area");
-        contentArea.getChildren().addAll(mainContent, bottomPanel);
-        VBox.setVgrow(mainContent, Priority.ALWAYS);
+        // Center content area
+        VBox filterWrapper = new VBox();
+        filterWrapper.getStyleClass().add("filter-wrapper");
+        filterWrapper.setPadding(new Insets(0, 16, 16, 0));
+        VBox.setVgrow(filterWrapper, Priority.ALWAYS);
+        filterWrapper.getChildren().add(filterArea);
         
-        setCenter(contentArea);
-    }
-    
-    public void updateStatus() {
-        statusCard.updateStatus();
+        mainContent.getChildren().addAll(dashboardPanel, filterWrapper);
+        HBox.setHgrow(filterWrapper, Priority.ALWAYS);
+        
+        setCenter(mainContent);
     }
     
     public HeaderPane getHeaderPane() {
         return headerPane;
     }
     
-    public LoginCard getLoginCard() {
-        return loginCard;
-    }
-    
-    public StatusCard getStatusCard() {
-        return statusCard;
+    public DashboardPanel getDashboardPanel() {
+        return dashboardPanel;
     }
     
     public FilterContainer getFilterContainer() {
         return filterContainer;
     }
     
-    public LogPane getLogPane() {
-        return logPane;
+    public ResultsPanel getResultsPanel() {
+        return resultsPanel;
     }
     
     public DashboardController getController() {
         return controller;
+    }
+    
+    public void showResults() {
+        resultsPanel.setVisible(true);
     }
 }
