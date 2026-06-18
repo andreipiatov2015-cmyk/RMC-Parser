@@ -316,6 +316,36 @@ public class Messages {
     public static final String STATUS_VALIDATION = "Проверка";
     public static final String STATUS_INTERNET = "Интернет";
     
+    // ==================== Главное окно приложения ====================
+    
+    // Меню
+    public static final String MENU_FILE = "Файл";
+    public static final String MENU_SERVICE = "Сервис";
+    public static final String MENU_HELP = "Справка";
+    
+    // Меню "Файл"
+    public static final String MENU_FILE_LOGIN = "Войти";
+    public static final String MENU_FILE_LOGOUT = "Выйти";
+    public static final String MENU_FILE_EXPORT = "Экспорт Excel";
+    public static final String MENU_FILE_EXIT = "Выход";
+    
+    // Меню "Сервис"
+    public static final String MENU_SERVICE_REFRESH_FILTERS = "Обновить фильтры";
+    public static final String MENU_SERVICE_CLEAR_CACHE = "Очистить кэш";
+    public static final String MENU_SERVICE_DEV_DIAGNOSTICS = "Диагностика разработчика";
+    
+    // Меню "Справка"
+    public static final String MENU_HELP_ABOUT = "О программе";
+    public static final String MENU_HELP_CHECK_UPDATES = "Проверить обновления";
+    
+    // Навигация
+    public static final String NAV_HOME = "Главная";
+    public static final String NAV_AUTH = "Авторизация";
+    public static final String NAV_FILTERS = "Фильтры";
+    public static final String NAV_RESULTS = "Результаты";
+    public static final String NAV_EXPORT = "Экспорт";
+    public static final String NAV_SETTINGS = "Настройки";
+    
     private Messages() {
         // Приватный конструктор - класс только для констант
     }
