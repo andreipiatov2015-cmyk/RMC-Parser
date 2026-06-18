@@ -3,6 +3,7 @@ package com.rmc.ui.main;
 import com.rmc.auth.AuthenticationService;
 import com.rmc.auth.LoginRequest;
 import com.rmc.auth.LoginResult;
+import com.rmc.auth.django.DjangoAuthenticationProvider;
 import com.rmc.filters.loader.FilterPageLoader;
 import com.rmc.filters.loader.FilterPageResult;
 import com.rmc.http.HttpClientService;
@@ -433,28 +434,29 @@ public class MainApplicationWindow extends BorderPane {
     
     private void handleLogin(String login, String password, Label statusLabel) {
         logger.info("Выполняется вход: {}", login);
-        
+
         try {
-            LoginRequest request = LoginRequest.builder()
-                    .username(login)
-                    .password(password)
-                    .loginUrl("https://rmc.example.com/login")
-                    .build();
+            // Используем DjangoAuthenticationProvider для авторизации
+            DjangoAuthenticationProvider provider = new DjangoAuthenticationProvider(
+                    httpClient, 
+                    "https://rmc.ruobr.ru"
+            );
             
-            LoginResult result = authService.login(request);
-            
+            DjangoAuthenticationProvider.DjangoAuthResult result = provider.authenticate(login, password);
+
             if (result.isSuccess()) {
                 isAuthenticated = true;
                 currentUsername = login;
-                statusLabel.setText("Вход выполнен!");
+                statusLabel.setText("Вход выполнен! Cookies: " + result.getReceivedCookies());
                 statusLabel.setStyle("-fx-text-fill: #4CAF50;");
                 updateStatusBar();
                 logRecentAction("Вход выполнен: " + login);
                 showSection("auth");
             } else {
-                statusLabel.setText("Ошибка входа: " + result.getErrorMessage().orElse("Неизвестная ошибка"));
+                String errorMsg = result.getErrorMessage().orElse("Неизвестная ошибка");
+                statusLabel.setText("Ошибка входа: " + errorMsg);
                 statusLabel.setStyle("-fx-text-fill: #f44336;");
-                logRecentAction("Ошибка входа");
+                logRecentAction("Ошибка входа: " + errorMsg);
             }
         } catch (Exception e) {
             logger.error("Ошибка входа", e);

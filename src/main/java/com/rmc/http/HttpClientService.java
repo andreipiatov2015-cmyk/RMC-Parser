@@ -153,17 +153,35 @@ public class HttpClientService {
     }
     
     public HttpResponse post(URI uri, String body, String contentType) {
+        return postWithHeaders(uri, body, Map.of("Content-Type", contentType));
+    }
+    
+    /**
+     * Выполнить POST запрос с дополнительными заголовками.
+     * 
+     * @param uri URI запроса
+     * @param body тело запроса
+     * @param headers дополнительные заголовки
+     * @return HttpResponse с ответом
+     * @throws HttpException если запрос неуспешен
+     */
+    public HttpResponse postWithHeaders(URI uri, String body, Map<String, String> headers) {
         logger.info(Messages.LOG_HTTP_POST, uri);
         
         Instant start = Instant.now();
         
         try {
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(uri)
                     .timeout(requestTimeout)
-                    .header("Content-Type", contentType)
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(body));
+            
+            // Добавляем заголовки
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                builder.header(entry.getKey(), entry.getValue());
+            }
+            
+            HttpRequest request = builder.build();
             
             if (logRequests) {
                 logger.debug("POST Request: {} - {}", uri, body.length() > 100 
