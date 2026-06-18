@@ -1,7 +1,6 @@
 package com.rmc.ui.dashboard;
 
 import com.rmc.filters.model.FilterGroup;
-import com.rmc.filters.parser.FilterDefinition;
 import com.rmc.filters.service.FilterService;
 import com.rmc.http.HttpClientService;
 import com.rmc.state.ApplicationState;
@@ -19,7 +18,6 @@ public class FilterContainer extends VBox {
     
     private static final String RMC_BASE_URL = "https://rmc.ruobr.ru";
     
-    private Label titleLabel;
     private VBox placeholderPane;
     private DynamicFilterPane dynamicFilterPane;
     private boolean filtersLoaded = false;
@@ -31,14 +29,11 @@ public class FilterContainer extends VBox {
         setPadding(new Insets(20));
         setSpacing(16);
         
-        titleLabel = new Label("Параметры поиска");
-        titleLabel.getStyleClass().add("card-title");
-        
         placeholderPane = createPlaceholder();
         dynamicFilterPane = new DynamicFilterPane();
         dynamicFilterPane.setVisible(false);
         
-        getChildren().addAll(titleLabel, placeholderPane, dynamicFilterPane);
+        getChildren().addAll(placeholderPane, dynamicFilterPane);
     }
     
     private VBox createPlaceholder() {
@@ -88,15 +83,22 @@ public class FilterContainer extends VBox {
                     getChildren().remove(progress);
                     
                     if (result.isSuccess()) {
-                        // Загружаем фильтры в UI
-                        if (!result.getGroups().isEmpty()) {
-                            FilterGroup mainGroup = result.getGroups().get(0);
-                            dynamicFilterPane.loadFilters(mainGroup.getFilters());
-                        }
+                        // Load filters into DynamicFilterPane
+                        dynamicFilterPane.loadFilters(result.getGroups());
+                        
+                        // Set up apply handler
+                        dynamicFilterPane.setOnApply(() -> {
+                            String queryString = dynamicFilterPane.buildQueryString();
+                            DashboardView view = (DashboardView) getScene().getRoot();
+                            if (view != null && view.getController() != null) {
+                                view.getController().logInfo("Применены фильтры: " + queryString);
+                            }
+                        });
+                        
                         dynamicFilterPane.setVisible(true);
                         filtersLoaded = true;
                         
-                        // Обновляем статус в Header
+                        // Log to dashboard
                         DashboardView view = (DashboardView) getScene().getRoot();
                         if (view != null && view.getController() != null) {
                             view.getController().logInfo("Загружено фильтров: " + result.getFilterCount());

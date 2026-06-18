@@ -7,6 +7,225 @@
     -fx-background-color: #F5F7FA;
 }
 
+/* ========== Filter Engine Styles ========== */
+
+/* Filter Card */
+.filter-card {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 4, 0, 0, 1);
+    -fx-border-radius: 8;
+    -fx-border-color: #E8ECF0;
+    -fx-border-width: 1;
+}
+
+.filter-card:hover {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 6, 0, 0, 2);
+    -fx-border-color: #D0D7DE;
+}
+
+.filter-card-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #24292F;
+}
+
+/* Filter TextField */
+.filter-text-field {
+    -fx-background-color: #F6F8FA;
+    -fx-border-color: #D0D7DE;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 12;
+    -fx-font-size: 13px;
+}
+
+.filter-text-field:focused {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #0969DA;
+    -fx-border-width: 2;
+}
+
+.filter-text-field:hover {
+    -fx-border-color: #8C959F;
+}
+
+/* Filter ComboBox */
+.filter-combo-box {
+    -fx-background-color: #F6F8FA;
+    -fx-border-color: #D0D7DE;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 12;
+    -fx-font-size: 13px;
+}
+
+.filter-combo-box:focused {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #0969DA;
+    -fx-border-width: 2;
+}
+
+.filter-combo-box:hover {
+    -fx-border-color: #8C959F;
+}
+
+/* Filter Checkbox */
+.filter-checkbox {
+    -fx-font-size: 13px;
+    -fx-text-fill: #24292F;
+}
+
+.filter-checkbox .box {
+    -fx-border-color: #D0D7DE;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.filter-checkbox:selected .box {
+    -fx-background-color: #0969DA;
+    -fx-border-color: #0969DA;
+}
+
+/* Filter Radio */
+.filter-radio {
+    -fx-font-size: 13px;
+    -fx-text-fill: #24292F;
+}
+
+/* Filter DatePicker */
+.filter-date-picker {
+    -fx-background-color: #F6F8FA;
+    -fx-border-color: #D0D7DE;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 12;
+    -fx-font-size: 13px;
+}
+
+.filter-date-picker:focused {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #0969DA;
+    -fx-border-width: 2;
+}
+
+/* Filter Chips Pane */
+.filter-chips-pane {
+    -fx-background-color: transparent;
+    -fx-hgap: 6;
+    -fx-vgap: 6;
+}
+
+/* Filter Chip */
+.chip {
+    -fx-background-color: #E8F4FD;
+    -fx-border-color: #B6DCF9;
+    -fx-border-radius: 16;
+    -fx-background-radius: 16;
+    -fx-padding: 4 8;
+    -fx-font-size: 12px;
+    -fx-text-fill: #0969DA;
+}
+
+.chip:hover {
+    -fx-background-color: #D4E9FA;
+}
+
+.chip .chip-close {
+    -fx-background-color: #8C959F;
+    -fx-shape: "M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12";
+}
+
+.chip .chip-close:hover {
+    -fx-background-color: #24292F;
+}
+
+/* Filter Add Button */
+.filter-add-button {
+    -fx-background-color: #0969DA;
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+    -fx-padding: 8 12;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.filter-add-button:hover {
+    -fx-background-color: #0860CA;
+}
+
+/* Filter Toolbar */
+.filter-toolbar {
+    -fx-background-color: #F6F8FA;
+    -fx-background-radius: 8;
+    -fx-padding: 12 16;
+    -fx-border-radius: 8;
+}
+
+.filter-status {
+    -fx-font-size: 12px;
+    -fx-text-fill: #57606A;
+}
+
+.filter-reset-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #57606A;
+    -fx-border-color: #D0D7DE;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 10 20;
+    -fx-font-size: 13px;
+}
+
+.filter-reset-button:hover {
+    -fx-background-color: #F3F4F6;
+    -fx-border-color: #8C959F;
+}
+
+.filter-apply-button {
+    -fx-background-color: #238636;
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+    -fx-padding: 10 24;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+}
+
+.filter-apply-button:hover {
+    -fx-background-color: #2EA043;
+}
+
+/* Dynamic Filter Pane */
+.dynamic-filter-pane {
+    -fx-background-color: transparent;
+}
+
+.filter-pane-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #24292F;
+}
+
+.filter-pane-status {
+    -fx-font-size: 12px;
+    -fx-text-fill: #57606A;
+    -fx-padding: 8 0;
+}
+
+.filter-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.filter-scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.filter-separator {
+    -fx-background-color: #E1E4E8;
+    -fx-border-width: 0;
+}
+
 /* ========== Main Layout ========== */
 .dashboard-view {
     -fx-background-color: #F5F7FA;

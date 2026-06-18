@@ -347,7 +347,7 @@ public class MainTabController {
                     currentFilters = parseResult.getFilters();
                     
                     // Загружаем в динамическую панель
-                    dynamicFilterPane.loadFilters(currentFilters);
+                    dynamicFilterPane.loadFiltersFromList(currentFilters);
                     
                     filtersStatusLabel.setText("Загружено " + currentFilters.size() + " фильтров");
                     log("Загружено " + currentFilters.size() + " фильтров");
