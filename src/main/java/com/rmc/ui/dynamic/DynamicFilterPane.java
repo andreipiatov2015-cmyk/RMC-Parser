@@ -1,246 +1,235 @@
 package com.rmc.ui.dynamic;
 
+import com.rmc.filters.model.FilterGroup;
 import com.rmc.filters.parser.FilterDefinition;
-import com.rmc.filters.parser.FilterParser;
+import com.rmc.filters.session.FilterSession;
+import com.rmc.filters.ui.FilterCard;
+import com.rmc.filters.ui.FilterToolbar;
 import com.rmc.logging.AppLogger;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
- * Динамическая панель фильтров.
+ * Dynamic filter pane with modern UI.
  * 
- * <p>Автоматически строит JavaFX интерфейс из списка FilterDefinition.</p>
- * 
- * <p>Поддерживаемые типы:</p>
- * <ul>
- *   <li>select → ComboBox или ListView</li>
- *   <li>checkbox → CheckBox</li>
- *   <li>radio → ToggleGroup с RadioButtons</li>
- *   <li>text → TextField</li>
- *   <li>textarea → TextArea</li>
- *   <li>number → TextField</li>
- *   <li>date → DatePicker</li>
- * </ul>
- * 
- * <p>Если завтра сайт добавит новый фильтр - он автоматически появится в программе.</p>
+ * <p>Automatically builds UI from FilterDefinitions.</p>
  */
 public class DynamicFilterPane extends VBox {
     
     private static final Logger logger = AppLogger.getLogger();
     
-    private final FilterBinder binder;
-    private final GridPane gridPane;
-    private final Label titleLabel;
-    private final Label statusLabel;
+    private final List<FilterCard> filterCards;
+    private FilterSession session;
+    private FilterToolbar toolbar;
+    private VBox cardsContainer;
+    private Label statusLabel;
     
-    private List<FilterDefinition> currentFilters;
+    private Consumer<FilterSession> onSessionChange;
+    private Runnable onApply;
     
-    /**
-     * Создать динамическую панель фильтров.
-     */
     public DynamicFilterPane() {
-        this.binder = new FilterBinder();
-        this.gridPane = createGridPane();
-        this.titleLabel = new Label("Динамические фильтры");
-        this.statusLabel = new Label();
+        this.filterCards = new ArrayList<>();
         
         setupPane();
     }
     
-    /**
-     * Настроить панель.
-     */
     private void setupPane() {
-        setSpacing(15);
-        setPadding(new Insets(20));
+        getStyleClass().add("dynamic-filter-pane");
+        setSpacing(16);
+        setPadding(new Insets(16));
         setAlignment(Pos.TOP_CENTER);
         
-        // Заголовок
-        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        // Title
+        Label titleLabel = new Label("Параметры поиска");
+        titleLabel.getStyleClass().add("filter-pane-title");
         
-        // Статус
-        statusLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 12px;");
+        // Cards container
+        cardsContainer = new VBox();
+        cardsContainer.setSpacing(12);
+        cardsContainer.setPadding(new Insets(8));
         
-        // ScrollPane для фильтров
-        ScrollPane scrollPane = new ScrollPane(gridPane);
+        // Scroll pane for cards
+        ScrollPane scrollPane = new ScrollPane(cardsContainer);
         scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(400);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        
+        scrollPane.setHbarPolicy(javafx.scene.control.ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.getStyleClass().add("filter-scroll-pane");
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
         
-        getChildren().addAll(titleLabel, new Separator(), scrollPane, statusLabel);
+        // Separator
+        Separator separator = new Separator();
+        separator.getStyleClass().add("filter-separator");
+        
+        // Status
+        statusLabel = new Label();
+        statusLabel.getStyleClass().add("filter-pane-status");
+        
+        getChildren().addAll(titleLabel, scrollPane, separator, statusLabel);
     }
     
     /**
-     * Создать GridPane для фильтров.
+     * Load filters from FilterGroup list.
      */
-    private GridPane createGridPane() {
-        GridPane grid = new GridPane();
-        grid.setHgap(15);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(10));
-        grid.setAlignment(Pos.TOP_LEFT);
-        return grid;
-    }
-    
-    /**
-     * Загрузить фильтры из HTML.
-     * 
-     * @param html HTML контент
-     */
-    public void loadFromHtml(String html) {
-        logger.info(LOG_LOADING_FILTERS);
+    public void loadFilters(List<FilterGroup> groups) {
+        filterCards.clear();
+        cardsContainer.getChildren().clear();
         
-        FilterParser.ParseResult result = FilterParser.parse(html);
-        
-        if (result.isSuccess()) {
-            loadFilters(result.getFilters());
-        } else {
-            logger.error(LOG_PARSE_ERROR, result.getErrorMessage().orElse("Unknown error"));
-            statusLabel.setText("Ошибка разбора: " + result.getErrorMessage().orElse(""));
+        if (groups == null || groups.isEmpty()) {
+            statusLabel.setText("Группы не найдены");
+            return;
         }
-    }
-    
-    /**
-     * Загрузить фильтры из списка определений.
-     * 
-     * @param filters список фильтров
-     */
-    public void loadFilters(List<FilterDefinition> filters) {
-        logger.info(LOG_BUILDING_UI, filters.size());
         
-        // Очищаем предыдущие фильтры
-        gridPane.getChildren().clear();
-        binder.getControlCount(); // Reset binder if needed
+        // Create session from groups
+        List<FilterDefinition> allFilters = new ArrayList<>();
+        for (FilterGroup group : groups) {
+            allFilters.addAll(group.getFilters());
+        }
         
-        this.currentFilters = filters;
+        session = new FilterSession(groups);
         
-        int rowIndex = 0;
-        int controlCount = 0;
-        
-        for (FilterDefinition filter : filters) {
-            // Пропускаем hidden поля
+        // Create cards
+        for (FilterDefinition filter : allFilters) {
+            // Skip hidden filters
             if (filter.getType() != null && filter.getType().name().equals("HIDDEN")) {
                 continue;
             }
             
-            try {
-                FilterControlFactory.ControlResult result = 
-                        FilterControlFactory.createControl(filter, gridPane, rowIndex);
-                
-                if (result != null) {
-                    // Регистрируем контрол в binder
-                    String filterName = filter.getName();
-                    Node control = result.getControl();
-                    
-                    if (filterName != null && control != null) {
-                        binder.register(filterName, control);
-                        controlCount++;
-                    }
-                    
-                    rowIndex += result.getRowIncrement();
-                }
-            } catch (Exception e) {
-                logger.warn(LOG_CONTROL_ERROR, filter.getName(), e.getMessage());
-            }
+            FilterCard card = new FilterCard(filter, session, this::handleSessionChange);
+            filterCards.add(card);
+            cardsContainer.getChildren().add(card);
         }
         
-        logger.info(LOG_UI_BUILT, controlCount);
-        statusLabel.setText(String.format("Загружено %d фильтров", controlCount));
+        updateStatus();
     }
     
     /**
-     * Получить значение фильтра.
-     * 
-     * @param filterName имя фильтра
-     * @return значение или empty
+     * Load filters from FilterDefinition list.
      */
-    public Optional<String> getValue(String filterName) {
-        return Optional.ofNullable(binder.getValue(filterName));
+    public void loadFilters(List<FilterDefinition> filters, boolean unused) {
+        List<FilterGroup> groups = List.of(
+            new FilterGroup.Builder()
+                .name("main")
+                .title("Параметры поиска")
+                .filters(filters)
+                .build()
+        );
+        loadFilters(groups);
     }
     
     /**
-     * Установить значение фильтра.
-     * 
-     * @param filterName имя фильтра
-     * @param value значение
+     * Load filters from FilterDefinition list.
      */
-    public void setValue(String filterName, String value) {
-        binder.setValue(filterName, value);
+    public void loadFiltersFromList(List<FilterDefinition> filters) {
+        List<FilterGroup> groups = List.of(
+            new FilterGroup.Builder()
+                .name("main")
+                .title("Параметры поиска")
+                .filters(filters)
+                .build()
+        );
+        loadFilters(groups);
     }
     
-    /**
-     * Получить все значения фильтров.
-     * 
-     * @return Map имя → значение
-     */
-    public Map<String, String> getAllValues() {
-        return binder.getAllValues();
+    private void handleSessionChange(FilterSession session) {
+        updateStatus();
+        if (onSessionChange != null) {
+            onSessionChange.accept(session);
+        }
     }
     
-    /**
-     * Получить значения в формате Query String.
-     * 
-     * @return строка вида "name1=value1&name2=value2"
-     */
-    public String toQueryString() {
-        return binder.toQueryString();
+    private void updateStatus() {
+        if (session != null) {
+            int total = session.getTotalFilterCount();
+            int active = session.getActiveFilterCount();
+            
+            if (active == 0) {
+                statusLabel.setText("Загружено " + total + " фильтров");
+            } else {
+                statusLabel.setText("Загружено " + total + " фильтров | Активно: " + active);
+            }
+        }
     }
     
-    /**
-     * Получить Binder для работы с фильтрами.
-     */
-    public FilterBinder getBinder() {
-        return binder;
+    public FilterSession getSession() {
+        return session;
     }
     
-    /**
-     * Получить текущие фильтры.
-     */
-    public List<FilterDefinition> getCurrentFilters() {
-        return currentFilters;
+    public String buildQueryString() {
+        if (session == null) return "";
+        return session.buildQueryString();
     }
     
-    /**
-     * Получить количество загруженных фильтров.
-     */
+    // Legacy method for compatibility
+    public java.util.Map<String, String> getAllValues() {
+        if (session == null) return java.util.Collections.emptyMap();
+        return session.getSingleValues();
+    }
+    
+    public void setOnApply(Runnable onApply) {
+        this.onApply = onApply;
+        setupToolbar();
+    }
+    
+    public void setOnSessionChange(Consumer<FilterSession> onSessionChange) {
+        this.onSessionChange = onSessionChange;
+    }
+    
+    private void setupToolbar() {
+        if (session == null || toolbar != null) return;
+        
+        toolbar = new FilterToolbar(session, 
+            () -> {
+                if (onApply != null) onApply.run();
+            },
+            () -> {
+                // Reset - rebuild cards to clear values
+                if (session != null) {
+                    session.clearAll();
+                    // Force UI update by rebuilding
+                    List<FilterGroup> groups = session.getGroups();
+                    filterCards.clear();
+                    cardsContainer.getChildren().clear();
+                    for (FilterGroup group : groups) {
+                        for (FilterDefinition filter : group.getFilters()) {
+                            if (filter.getType() == null || !filter.getType().name().equals("HIDDEN")) {
+                                FilterCard card = new FilterCard(filter, session, this::handleSessionChange);
+                                filterCards.add(card);
+                                cardsContainer.getChildren().add(card);
+                            }
+                        }
+                    }
+                }
+            }
+        );
+        
+        // Add toolbar at the end
+        getChildren().add(toolbar);
+    }
+    
+    public List<FilterCard> getFilterCards() {
+        return filterCards;
+    }
+    
     public int getFilterCount() {
-        return currentFilters != null ? currentFilters.size() : 0;
+        return filterCards.size();
     }
     
-    /**
-     * Проверить, загружены ли фильтры.
-     */
     public boolean hasFilters() {
-        return currentFilters != null && !currentFilters.isEmpty();
+        return !filterCards.isEmpty();
     }
     
-    /**
-     * Очистить все значения фильтров.
-     */
-    public void clearValues() {
-        binder.clear();
-        statusLabel.setText("Значения очищены");
+    // Legacy methods for compatibility
+    public void loadFromHtml(String html) {
+        // Legacy - not used
     }
-    
-    // Константы для логирования
-    private static final String LOG_LOADING_FILTERS = "Загрузка фильтров из HTML...";
-    private static final String LOG_BUILDING_UI = "Построение UI для {} фильтров...";
-    private static final String LOG_UI_BUILT = "UI построен. Создано контролов: {}";
-    private static final String LOG_PARSE_ERROR = "Ошибка разбора HTML: {}";
-    private static final String LOG_CONTROL_ERROR = "Ошибка создания контрола для {}: {}";
 }
