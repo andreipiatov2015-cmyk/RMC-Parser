@@ -32,7 +32,6 @@ public class DashboardPanel extends VBox {
         
         // User info card
         userCard = new InfoCard("Пользователь", "—");
-        updateUserCard();
         
         // Server status card
         serverCard = new InfoCard("Сервер", "Офлайн");
@@ -63,6 +62,9 @@ public class DashboardPanel extends VBox {
             enrollmentsCard,
             exportCard
         );
+        
+        // Initialize user card AFTER all fields are set
+        updateUserCard();
         
         // Listen for auth state changes
         ApplicationState.getInstance().addAuthStateListener(event -> updateUserCard());
