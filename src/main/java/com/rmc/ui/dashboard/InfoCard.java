@@ -12,12 +12,18 @@ public class InfoCard extends VBox {
     
     private final Label titleLabel;
     private final Label valueLabel;
+    private final Label subtitleLabel;
     
     public InfoCard(String title, String value) {
+        this(title, value, null);
+    }
+    
+    public InfoCard(String title, String value, String subtitle) {
         getStyleClass().add("info-card");
-        setSpacing(4);
-        setPadding(new Insets(12));
+        setSpacing(2);
+        setPadding(new Insets(10));
         setAlignment(Pos.TOP_LEFT);
+        setPrefHeight(60);
         
         titleLabel = new Label(title);
         titleLabel.getStyleClass().add("info-card-title");
@@ -25,7 +31,13 @@ public class InfoCard extends VBox {
         valueLabel = new Label(value);
         valueLabel.getStyleClass().add("info-card-value");
         
+        subtitleLabel = new Label(subtitle);
+        subtitleLabel.getStyleClass().add("info-card-subtitle");
+        
         getChildren().addAll(titleLabel, valueLabel);
+        if (subtitle != null) {
+            getChildren().add(subtitleLabel);
+        }
     }
     
     public void setValue(String value) {
@@ -36,14 +48,27 @@ public class InfoCard extends VBox {
         return valueLabel.getText();
     }
     
+    public void setSubtitle(String subtitle) {
+        if (subtitle != null) {
+            subtitleLabel.setText(subtitle);
+            if (!getChildren().contains(subtitleLabel)) {
+                getChildren().add(subtitleLabel);
+            }
+        }
+    }
+    
+    public String getSubtitle() {
+        return subtitleLabel.getText();
+    }
+    
     public void setStatus(String status) {
-        valueLabel.setText(status);
+        setSubtitle(status);
         if ("Авторизован".equals(status) || "Онлайн".equals(status)) {
-            valueLabel.setStyle("-fx-text-fill: #238636;");
+            subtitleLabel.setStyle("-fx-text-fill: #238636;");
         } else if ("Не авторизован".equals(status) || "Офлайн".equals(status)) {
-            valueLabel.setStyle("-fx-text-fill: #57606A;");
+            subtitleLabel.setStyle("-fx-text-fill: #57606A;");
         } else {
-            valueLabel.setStyle("-fx-text-fill: #24292F;");
+            subtitleLabel.setStyle("-fx-text-fill: #57606A;");
         }
     }
 }

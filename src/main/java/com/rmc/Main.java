@@ -2,12 +2,10 @@ package com.rmc;
 
 import com.rmc.i18n.Messages;
 import com.rmc.logging.AppLogger;
-import com.rmc.ui.dashboard.DashboardView;
-import com.rmc.ui.dashboard.ServiceDrawer;
+import com.rmc.ui.MainWindow;
 import com.rmc.version.VersionService;
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 
@@ -17,8 +15,6 @@ import org.slf4j.Logger;
 public class Main extends Application {
 
     private static final Logger logger = AppLogger.getLogger();
-    private DashboardView dashboardView;
-    private ServiceDrawer serviceDrawer;
 
     @Override
     public void start(Stage primaryStage) {
@@ -28,20 +24,10 @@ public class Main extends Application {
         try {
             primaryStage.setTitle(Messages.APP_TITLE);
             
-            // Create dashboard view
-            dashboardView = new DashboardView();
+            // Create main window
+            MainWindow mainWindow = new MainWindow();
             
-            // Create service drawer
-            serviceDrawer = new ServiceDrawer(primaryStage, dashboardView);
-            
-            // Connect header to service drawer
-            dashboardView.getHeaderPane().setServiceDrawer(serviceDrawer);
-            
-            // StackPane for overlay
-            StackPane root = new StackPane();
-            root.getChildren().addAll(dashboardView, serviceDrawer);
-            
-            Scene scene = new Scene(root, 1200, 800);
+            Scene scene = new Scene(mainWindow, 1200, 800);
             scene.getStylesheets().add("/styles/dashboard.css");
             primaryStage.setScene(scene);
             primaryStage.show();
