@@ -1,0 +1,352 @@
+/* RMC Framework - Dark Theme
+ *
+ * Переопределения для тёмной темы. Область действия — всё, что находится
+ * внутри узла с классом .dark-theme (см. ThemeService/MainWindow). Файл
+ * подключён ВСЕГДА, вместе с dashboard.css — активируется только когда
+ * на корневом узле есть класс .dark-theme, поэтому сам файл ничего не
+ * ломает, если тёмная тема выключена.
+ */
+
+.dark-theme.root,
+.dark-theme.main-window {
+    -fx-background-color: #0D1117;
+}
+
+.dark-theme .dashboard,
+.dark-theme .status-bar,
+.dark-theme .drawer-header,
+.dark-theme .navigation-item:hover {
+    -fx-background-color: #161B22;
+}
+
+/* ========== Top Bar ========== */
+.dark-theme .top-bar {
+    -fx-background-color: #161B22;
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .menu-button,
+.dark-theme .settings-button {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .menu-button:hover,
+.dark-theme .settings-button:hover {
+    -fx-text-fill: #58A6FF;
+    -fx-background-color: #21262D;
+}
+
+.dark-theme .title-label {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .version-label {
+    -fx-text-fill: #8B949E;
+    -fx-background-color: #21262D;
+}
+
+.dark-theme .user-label {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .switch-user-button {
+    -fx-text-fill: #58A6FF;
+}
+
+/* ========== Navigation Drawer ========== */
+.dark-theme .navigation-drawer,
+.dark-theme .drawer-content {
+    -fx-background-color: #161B22;
+}
+
+.dark-theme .drawer-header {
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .drawer-header-title,
+.dark-theme .nav-text {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .menu-separator {
+    -fx-background-color: #30363D;
+}
+
+/* ========== Dashboard ========== */
+.dark-theme .dashboard-title,
+.dark-theme .info-card-value,
+.dark-theme .history-item-summary {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .info-card,
+.dark-theme .history-item {
+    -fx-background-color: #161B22;
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .info-card-title,
+.dark-theme .info-card-subtitle,
+.dark-theme .dashboard-section-title,
+.dark-theme .history-item-time {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .history-item-result {
+    -fx-text-fill: #58A6FF;
+}
+
+.dark-theme .history-item-repeat {
+    -fx-background-color: #21262D;
+    -fx-border-color: #30363D;
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .history-item-repeat:hover {
+    -fx-background-color: #30363D;
+}
+
+.dark-theme .history-empty-label {
+    -fx-text-fill: #6E7681;
+}
+
+/* ========== Status Bar ========== */
+.dark-theme .status-bar {
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .status-item {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .status-separator {
+    -fx-text-fill: #30363D;
+}
+
+.dark-theme .easter-egg-button {
+    -fx-background-color: #21262D;
+}
+
+.dark-theme .easter-egg-button:hover {
+    -fx-background-color: #30363D;
+}
+
+.dark-theme .easter-egg-marquee-text {
+    -fx-text-fill: #E6EDF3;
+}
+
+/* ========== Auth View ========== */
+.dark-theme .auth-card {
+    -fx-background-color: #161B22;
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .auth-title {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .auth-field {
+    -fx-background-color: #0D1117;
+    -fx-border-color: #30363D;
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .auth-field:focused {
+    -fx-background-color: #0D1117;
+    -fx-border-color: #58A6FF;
+}
+
+/* ========== Account Picker ========== */
+.dark-theme .account-picker-title {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .account-picker-status {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .account-card,
+.dark-theme .account-card-remove {
+    -fx-background-color: #161B22;
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .account-card:hover {
+    -fx-border-color: #58A6FF;
+    -fx-effect: dropshadow(gaussian, rgba(88,166,255,0.35), 16, 0, 0, 4);
+}
+
+.dark-theme .account-avatar,
+.dark-theme .account-add-circle {
+    -fx-background-color: #21262D;
+}
+
+.dark-theme .account-avatar-icon,
+.dark-theme .account-add-plus {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .account-card-name {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .account-card-display-name {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .account-card-username {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .account-card-remove {
+    -fx-text-fill: #8B949E;
+}
+
+/* ========== Loading View ========== */
+.dark-theme .loading-text {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .loading-dots,
+.dark-theme .loading-progress {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .loading-cancel-button {
+    -fx-border-color: #30363D;
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .loading-cancel-button:hover {
+    -fx-border-color: #F85149;
+    -fx-text-fill: #F85149;
+}
+
+/* ========== Filters View ========== */
+.dark-theme .filters-title,
+.dark-theme .results-title,
+.dark-theme .results-summary,
+.dark-theme .results-institution-name {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .filters-status {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .filter-section-header .separator .line {
+    -fx-border-color: #30363D transparent transparent transparent;
+}
+
+.dark-theme .filter-section-title {
+    -fx-text-fill: #8B949E;
+}
+
+/* ========== Filter Card ========== */
+.dark-theme .filter-card,
+.dark-theme .results-stat-card,
+.dark-theme .results-institution-row,
+.dark-theme .results-placeholder {
+    -fx-background-color: #161B22;
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .filter-card:hover {
+    -fx-border-color: #58A6FF;
+}
+
+.dark-theme .filter-card-title {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .filter-combo,
+.dark-theme .filter-text,
+.dark-theme .filter-date {
+    -fx-background-color: #0D1117;
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .filter-combo:focused,
+.dark-theme .filter-text:focused {
+    -fx-background-color: #0D1117;
+    -fx-border-color: #58A6FF;
+}
+
+.dark-theme .filter-checkbox {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .chip,
+.dark-theme .filter-chip {
+    -fx-background-color: #21262D;
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .chip .label {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .filter-add-button {
+    -fx-background-color: #0D1117;
+    -fx-border-color: #30363D;
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .filter-add-button:hover {
+    -fx-background-color: #30363D;
+    -fx-text-fill: #E6EDF3;
+}
+
+/* ========== Results View ========== */
+.dark-theme .results-stat-value {
+    -fx-text-fill: #58A6FF;
+}
+
+.dark-theme .results-stat-label,
+.dark-theme .results-institution-stats {
+    -fx-text-fill: #8B949E;
+}
+
+/* ========== Error View ========== */
+.dark-theme .error-message {
+    -fx-text-fill: #8B949E;
+}
+
+/* ========== Action Button (secondary) ========== */
+.dark-theme .action-button-secondary {
+    -fx-background-color: #21262D;
+    -fx-text-fill: #E6EDF3;
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .action-button-secondary:hover {
+    -fx-background-color: #30363D;
+}
+
+/* ========== App Dialogs (Alert) ========== */
+.dark-theme.app-dialog {
+    -fx-background-color: #161B22;
+}
+
+.dark-theme .app-dialog > *.header-panel {
+    -fx-background-color: #0D1117;
+    -fx-border-color: transparent transparent #30363D transparent;
+}
+
+.dark-theme .app-dialog .header-panel .label {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .app-dialog > *.content.label {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .app-dialog .button-bar .button {
+    -fx-background-color: #21262D;
+    -fx-border-color: #30363D;
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .app-dialog .button-bar .button:hover {
+    -fx-background-color: #30363D;
+}
