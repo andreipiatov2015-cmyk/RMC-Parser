@@ -294,6 +294,15 @@
     -fx-text-fill: #24292F;
 }
 
+.easter-egg-bubble {
+    -fx-background-color: #24292F;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 15px;
+    -fx-padding: 12 16 12 16;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 0, 3);
+}
+
 /* ========== Workspace ========== */
 .workspace {
     -fx-background-color: transparent;
@@ -490,12 +499,7 @@
     -fx-text-fill: #24292F;
 }
 
-.loading-dots {
-    -fx-font-size: 24px;
-    -fx-text-fill: #57606A;
-}
-
-.loading-progress {
+.loading-status-small {
     -fx-font-size: 12px;
     -fx-text-fill: #57606A;
 }
@@ -722,11 +726,7 @@
 }
 
 .donut-chart {
-    -fx-background-color: #FFFFFF;
-    -fx-background-radius: 8;
-    -fx-border-color: #E8ECF0;
-    -fx-border-width: 1;
-    -fx-border-radius: 8;
+    -fx-background-color: transparent;
 }
 
 .donut-track {
@@ -748,27 +748,49 @@
     -fx-text-fill: #57606A;
 }
 
-.donut-count-small {
-    -fx-font-size: 13px;
+.donut-percent-only-small {
+    -fx-font-size: 15px;
     -fx-font-weight: 700;
     -fx-text-fill: #24292F;
-}
-
-.donut-percent-small {
-    -fx-font-size: 9px;
-    -fx-text-fill: #57606A;
 }
 
 .institution-summary-row {
     -fx-background-color: transparent;
 }
 
-.institution-summary-item {
-    -fx-font-size: 11px;
+.institution-summary-card {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 8;
+    -fx-border-color: #E8ECF0;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+}
+
+.institution-summary-value {
+    -fx-font-weight: 700;
+    -fx-text-fill: #0969DA;
+}
+
+.institution-summary-label {
     -fx-text-fill: #57606A;
-    -fx-padding: 4 10 4 10;
-    -fx-background-color: #F6F8FA;
-    -fx-background-radius: 6;
+}
+
+.institution-loading-box {
+    -fx-background-color: transparent;
+}
+
+.institution-loading-spinner .percentage {
+    -fx-fill: transparent;
+}
+
+.institution-loading-spinner .indicator {
+    -fx-progress-color: #0969DA;
+}
+
+.institution-loading-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #24292F;
 }
 
 .results-institution-row {

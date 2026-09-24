@@ -6,7 +6,7 @@
 
     <groupId>com.rmc</groupId>
     <artifactId>rmc-framework</artifactId>
-    <version>0.1.4</version>
+    <version>0.1.9</version>
     <packaging>jar</packaging>
 
     <name>RMC Framework</name>
@@ -75,6 +75,26 @@
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20240303</version>
+        </dependency>
+
+        <!-- ONNX Runtime — выполняет модель эмбеддингов прямо внутри JVM,
+             без Python в рантайме приложения. -->
+        <dependency>
+            <groupId>com.microsoft.onnxruntime</groupId>
+            <artifactId>onnxruntime</artifactId>
+            <version>1.20.0</version>
+        </dependency>
+
+        <!-- Токенизатор HuggingFace для Java — нужен, чтобы готовить текст
+             для ONNX-модели ТОЧНО так же, как это делает Python-сторона
+             (совпадение токенизации критично: иначе вектора будут не
+             сравнимы между тем, что индексировалось в Python, и тем, что
+             считается в Java на лету). Тянет один нативный бинарник
+             (реализация на Rust), не полноценный DJL/ML-фреймворк. -->
+        <dependency>
+            <groupId>ai.djl.huggingface</groupId>
+            <artifactId>tokenizers</artifactId>
+            <version>0.30.0</version>
         </dependency>
     </dependencies>
 

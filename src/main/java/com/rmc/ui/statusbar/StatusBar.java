@@ -5,6 +5,7 @@ import javafx.animation.Animation;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
+import javafx.animation.PauseTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -16,6 +17,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.Popup;
 import javafx.util.Duration;
 
 import java.time.LocalDateTime;
@@ -43,6 +45,7 @@ public class StatusBar extends HBox {
     private Timeline idleTauntTimer;
     private Timeline marqueeAnimation;
     private ScaleTransition enticementPulse;
+    private Popup currentBubble;
     
     public StatusBar() {
         getStyleClass().add("status-bar");
@@ -91,12 +94,11 @@ public class StatusBar extends HBox {
         clip.heightProperty().bind(marqueeArea.heightProperty());
         marqueeArea.setClip(clip);
         
-        if (eggState.isFinished()) {
-            easterEggButton.setDisable(true);
-            scheduleIdleTaunt(remainingTauntDelay());
-        } else {
-            startEnticementPulse();
-        }
+        // Периодические "обиженные" напоминания работают независимо от
+        // того, сколько раз уже нажимали — просто когда кнопку долго не
+        // трогают. Каждый клик перезапускает отсчёт (см. onEasterEggClicked).
+        scheduleIdleTaunt(remainingTauntDelay());
+        startEnticementPulse();
         
         // Clock
         clockLabel = new Label();
@@ -149,14 +151,26 @@ public class StatusBar extends HBox {
             return;
         }
         
-        String message = eggState.advanceAndGetMessage();
-        showMarqueeMessage(message);
-        
-        if (eggState.isFinished()) {
-            easterEggButton.setDisable(true);
-            stopEnticementPulse();
-            scheduleIdleTaunt(randomTauntInterval());
-        }
+        // Сначала (в фоне, коротким запросом) пробуем локальный AI-сервер —
+        // если он в сети, используем его ответ и НЕ трогаем локальный
+        // прогресс (запас заготовленных фраз бережём именно на случай,
+        // когда сервера рядом нет). Если сервер недоступен — используем
+        // обычный сценарий, как раньше.
+        new Thread(() -> {
+            int percent = escalationPercent();
+            java.util.Optional<String> aiMessage = AiEasterEggService.tryGetMessage(percent);
+            Platform.runLater(() -> {
+                if (aiMessage.isPresent()) {
+                    showBubble(aiMessage.get());
+                } else {
+                    String message = eggState.advanceAndGetMessage();
+                    showBubble(message);
+                }
+                // Каждый клик — знак, что за кнопкой следят: не нужно
+                // прямо сейчас напоминать "я обиделась", отсчёт начинается заново.
+                scheduleIdleTaunt(randomTauntInterval());
+            });
+        }).start();
     }
     
     /**
@@ -185,9 +199,51 @@ public class StatusBar extends HBox {
     }
     
     /**
+     * Показать реплику во всплывающем "пузыре" над кнопкой — используется
+     * для ответа на клик. Если предыдущий пузырь ещё виден — он сразу
+     * прячется, и вместо него показывается новый (а не поверх старого).
+     */
+    private void showBubble(String message) {
+        if (currentBubble != null) {
+            currentBubble.hide();
+        }
+        
+        Popup popup = new Popup();
+        popup.setAutoHide(true);
+        currentBubble = popup;
+        
+        Label label = new Label(message);
+        label.getStyleClass().add("easter-egg-bubble");
+        label.setWrapText(true);
+        label.setMaxWidth(360);
+        popup.getContent().add(label);
+        
+        var bounds = easterEggButton.localToScreen(easterEggButton.getBoundsInLocal());
+        double anchorX = bounds != null ? bounds.getMinX() - 60 : 0;
+        double anchorY = bounds != null ? bounds.getMinY() : 0;
+        
+        // Показываем один раз, чтобы JavaFX посчитал реальный размер
+        // "пузыря" с учётом переноса текста, а затем поднимаем его на его
+        // же фактическую высоту + отступ — так текст никогда не
+        // перекрывает кнопку, независимо от длины конкретной реплики.
+        popup.show(easterEggButton, anchorX, anchorY);
+        Platform.runLater(() -> {
+            double popupHeight = popup.getHeight();
+            popup.setY(anchorY - popupHeight - 18);
+        });
+        
+        double seconds = Math.min(8, Math.max(3, 2.5 + message.length() / 20.0));
+        PauseTransition hide = new PauseTransition(Duration.seconds(seconds));
+        hide.setOnFinished(e -> popup.hide());
+        hide.play();
+    }
+    
+    /**
      * Показать реплику бегущей строкой рядом с кнопкой. Если что-то уже
      * бежит — оно немедленно останавливается и стирается, и вместо него
-     * сразу же бежит новая реплика (а не поверх старой).
+     * сразу же бежит новая реплика (а не поверх старой). Используется
+     * только для периодических "обиженных" напоминаний, когда кнопка
+     * долго не нажималась.
      */
     private void showMarqueeMessage(String message) {
         stopMarquee();
@@ -245,7 +301,10 @@ public class StatusBar extends HBox {
             idleTauntTimer.stop();
         }
         idleTauntTimer = new Timeline(new KeyFrame(delay, e -> {
-            showMarqueeMessage(randomIdleTaunt());
+            new Thread(() -> {
+                java.util.Optional<String> aiMessage = AiEasterEggService.tryGetMessage(escalationPercent());
+                Platform.runLater(() -> showMarqueeMessage(aiMessage.orElseGet(this::randomIdleTaunt)));
+            }).start();
             eggState.recordTaunt(System.currentTimeMillis());
             scheduleIdleTaunt(randomTauntInterval());
         }));
@@ -255,5 +314,20 @@ public class StatusBar extends HBox {
     private String randomIdleTaunt() {
         List<String> taunts = EasterEggMessages.IDLE_TAUNTS;
         return taunts.get(ThreadLocalRandom.current().nextInt(taunts.size()));
+    }
+    
+    /**
+     * Насколько "раздражена" кнопка сейчас (0-100) — считается из того,
+     * сколько заготовленных реплик по сценарию уже показано. Передаётся
+     * в запрос к локальному AI-серверу, чтобы его тон совпадал с тем,
+     * что было бы дальше по сценарию.
+     */
+    private int escalationPercent() {
+        int total = EasterEggMessages.SEQUENCE.size();
+        if (total <= 0) {
+            return 100;
+        }
+        int percent = (int) Math.round((eggState.getClickIndex() * 100.0) / total);
+        return Math.max(0, Math.min(100, percent));
     }
 }

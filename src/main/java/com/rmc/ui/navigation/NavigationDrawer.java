@@ -14,6 +14,7 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.Separator;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -95,6 +96,12 @@ public class NavigationDrawer extends VBox {
                 createMenuItem("⭐", "Избранные учреждения", () -> {
                     close();
                     mainWindow.getWorkspace().showFavorites();
+                })
+        );
+        topItems.getChildren().add(
+                createMenuItem("🤖", "RMCAI", () -> {
+                    close();
+                    mainWindow.getWorkspace().showRmcAi();
                 })
         );
         
@@ -207,10 +214,41 @@ public class NavigationDrawer extends VBox {
     private void handleUpdate() {
         close();
         
+        ProgressIndicator checkSpinner = new ProgressIndicator();
+        checkSpinner.setPrefSize(48, 48);
+        checkSpinner.getStyleClass().add("institution-loading-spinner");
+        
+        Label checkLabel = new Label("Проверка обновлений...");
+        checkLabel.getStyleClass().add("institution-loading-title");
+        
+        VBox checkContent = new VBox(12, checkSpinner, checkLabel);
+        checkContent.setPadding(new Insets(24));
+        checkContent.setAlignment(Pos.CENTER);
+        checkContent.getStyleClass().add("app-dialog");
+        
+        Stage checkStage = new Stage(StageStyle.UTILITY);
+        checkStage.setTitle("Обновление");
+        checkStage.setResizable(false);
+        checkStage.initModality(Modality.APPLICATION_MODAL);
+        if (mainWindow.getScene() != null) {
+            checkStage.initOwner(mainWindow.getScene().getWindow());
+        }
+        Scene checkScene = new Scene(checkContent, 280, 140);
+        checkScene.getStylesheets().add(getClass().getResource("/styles/dashboard.css").toExternalForm());
+        checkScene.getStylesheets().add(getClass().getResource("/styles/dashboard-dark.css").toExternalForm());
+        if (ThemeService.isDarkMode()) {
+            checkContent.getStyleClass().add("dark-theme");
+        }
+        checkStage.setScene(checkScene);
+        checkStage.show();
+        
         new Thread(() -> {
             UpdateCheckService service = new UpdateCheckService();
             UpdateCheckResult result = service.checkForUpdates();
-            javafx.application.Platform.runLater(() -> showUpdateResult(result));
+            javafx.application.Platform.runLater(() -> {
+                checkStage.close();
+                showUpdateResult(result);
+            });
         }).start();
     }
     
@@ -314,13 +352,17 @@ public class NavigationDrawer extends VBox {
         String assetName = result.getAssetName().orElse("RMC-Framework-update.exe");
         Path destination = Paths.get(System.getProperty("java.io.tmpdir"), assetName);
         
+        Label progressTitle = new Label("Загрузка обновления");
+        progressTitle.getStyleClass().add("institution-loading-title");
+        
         ProgressBar progressBar = new ProgressBar(0);
         progressBar.setPrefWidth(280);
-        Label progressLabel = new Label("Загрузка обновления...");
-        progressLabel.getStyleClass().add("drawer-header-title");
         
-        VBox progressContent = new VBox(12, progressLabel, progressBar);
-        progressContent.setPadding(new Insets(20));
+        Label progressStatus = new Label("Подготовка...");
+        progressStatus.getStyleClass().add("loading-status-small");
+        
+        VBox progressContent = new VBox(12, progressTitle, progressBar, progressStatus);
+        progressContent.setPadding(new Insets(24, 24, 20, 24));
         progressContent.setAlignment(Pos.CENTER);
         progressContent.getStyleClass().add("app-dialog");
         
@@ -331,7 +373,7 @@ public class NavigationDrawer extends VBox {
         if (mainWindow.getScene() != null) {
             progressStage.initOwner(mainWindow.getScene().getWindow());
         }
-        Scene progressScene = new Scene(progressContent, 320, 120);
+        Scene progressScene = new Scene(progressContent, 340, 140);
         progressScene.getStylesheets().add(getClass().getResource("/styles/dashboard.css").toExternalForm());
         progressScene.getStylesheets().add(getClass().getResource("/styles/dashboard-dark.css").toExternalForm());
         if (ThemeService.isDarkMode()) {
@@ -346,7 +388,11 @@ public class NavigationDrawer extends VBox {
                 service.download(result.getDownloadUrl().orElseThrow(), destination, (bytesRead, totalBytes) -> {
                     if (totalBytes > 0) {
                         double fraction = (double) bytesRead / totalBytes;
-                        javafx.application.Platform.runLater(() -> progressBar.setProgress(fraction));
+                        javafx.application.Platform.runLater(() -> {
+                            progressBar.setProgress(fraction);
+                            progressStatus.setText(Math.round(fraction * 100) + "%   ("
+                                    + (bytesRead / 1024 / 1024) + " МБ из " + (totalBytes / 1024 / 1024) + " МБ)");
+                        });
                     }
                 });
                 

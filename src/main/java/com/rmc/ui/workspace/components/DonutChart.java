@@ -61,13 +61,26 @@ public class DonutChart extends StackPane {
         arcsPane.setMaxSize(size, size);
         arcsPane.setMinSize(size, size);
         
-        Label countLabel = new Label(String.valueOf(enrolled));
-        countLabel.getStyleClass().add(size >= 100 ? "donut-count" : "donut-count-small");
+        boolean isLarge = size >= 100;
         
-        Label percentLabel = new Label(percent + "%");
-        percentLabel.getStyleClass().add(size >= 100 ? "donut-percent" : "donut-percent-small");
-        
-        VBox textBox = new VBox(0, countLabel, percentLabel);
+        VBox textBox;
+        if (isLarge) {
+            Label countLabel = new Label(String.valueOf(enrolled));
+            countLabel.getStyleClass().add("donut-count");
+            
+            Label percentLabel = new Label(percent + "%");
+            percentLabel.getStyleClass().add("donut-percent");
+            
+            textBox = new VBox(0, countLabel, percentLabel);
+        } else {
+            // Для маленьких колец (по каждой программе) — только процент,
+            // жирным и покрупнее; число зачисленных и так уже написано
+            // текстом рядом (см. InstitutionDetailView).
+            Label percentLabel = new Label(percent + "%");
+            percentLabel.getStyleClass().add("donut-percent-only-small");
+            
+            textBox = new VBox(percentLabel);
+        }
         textBox.setAlignment(Pos.CENTER);
         
         getChildren().addAll(arcsPane, textBox);

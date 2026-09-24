@@ -51,6 +51,15 @@ public class DjangoAuthenticationProvider {
     }
     
     /**
+     * Обратный вызов для отображения прогресса авторизации в UI — чтобы
+     * пользователь видел, что программа работает, а не зависла, особенно
+     * если сервер отвечает медленно.
+     */
+    public interface ProgressListener {
+        void onProgress(String message);
+    }
+
+    /**
      * Выполнить авторизацию.
      * 
      * @param username имя пользователя
@@ -58,14 +67,38 @@ public class DjangoAuthenticationProvider {
      * @return результат авторизации
      */
     public DjangoAuthResult authenticate(String username, String password) {
+        return authenticate(username, password, null);
+    }
+
+    /**
+     * Выполнить авторизацию с отображением прогресса по шагам.
+     *
+     * <p>Замеряет и логирует время каждого HTTP-запроса отдельно (GET
+     * страницы логина и POST данных формы) — это единственный надёжный
+     * способ понять, на каком именно шаге теряется время, если вход
+     * ощущается медленным: сам код здесь не делает искусственных пауз,
+     * таймаут в 30 секунд — это верхний потолок ожидания, а не
+     * принудительная задержка, так что реальная причина медленности
+     * почти всегда на стороне сервера или сети, а не в этом коде.</p>
+     *
+     * @param username имя пользователя
+     * @param password пароль
+     * @param listener необязательный слушатель прогресса
+     * @return результат авторизации
+     */
+    public DjangoAuthResult authenticate(String username, String password, ProgressListener listener) {
         String loginUrl = baseUrl + loginPath;
         
         logger.info(LOG_START);
         logger.info(LOG_GETTING_LOGIN_PAGE, loginUrl);
+        report(listener, "Подключение к серверу...");
         
         try {
             // Шаг 1: GET запрос на страницу авторизации
+            long getStart = System.currentTimeMillis();
             HttpResponse getResponse = httpClient.get(loginUrl);
+            long getElapsed = System.currentTimeMillis() - getStart;
+            logger.info(LOG_GET_TIMING, getElapsed);
             
             logger.info(LOG_HTTP_STATUS, getResponse.getStatusCode());
             
@@ -73,6 +106,8 @@ public class DjangoAuthenticationProvider {
                 logger.error(LOG_UNEXPECTED_STATUS, getResponse.getStatusCode());
                 return DjangoAuthResult.failure("Неожиданный статус: " + getResponse.getStatusCode());
             }
+            
+            report(listener, "Страница входа получена (" + getElapsed + " мс). Подготовка данных...");
             
             // Шаг 2: Сохраняем cookies автоматически (HttpClientService делает это)
             Set<String> cookiesBefore = getCookieNames();
@@ -101,7 +136,12 @@ public class DjangoAuthenticationProvider {
             String postBody = buildFormBody(formFields);
             
             // Шаг 6: Выполняем POST с правильными заголовками
+            report(listener, "Отправка логина и пароля...");
+            long postStart = System.currentTimeMillis();
             HttpResponse postResponse = performAuthenticatedPost(loginUrl, postBody, csrfToken);
+            long postElapsed = System.currentTimeMillis() - postStart;
+            logger.info(LOG_POST_TIMING, postElapsed);
+            report(listener, "Ответ получен (" + postElapsed + " мс). Проверка результата...");
             
             // Шаг 7: Проверяем успешность.
             //
@@ -311,7 +351,15 @@ public class DjangoAuthenticationProvider {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
     
+    private void report(ProgressListener listener, String message) {
+        if (listener != null) {
+            listener.onProgress(message);
+        }
+    }
+    
     // Константы для логирования
+    private static final String LOG_GET_TIMING = "GET страницы входа занял {} мс";
+    private static final String LOG_POST_TIMING = "POST с данными формы занял {} мс";
     private static final String LOG_START = "==================================================\nDjango авторизация\n==================================================";
     private static final String LOG_GETTING_LOGIN_PAGE = "Получение страницы авторизации: {}";
     private static final String LOG_HTTP_STATUS = "HTTP статус: {}";

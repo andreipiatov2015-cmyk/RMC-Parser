@@ -16,7 +16,9 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import org.slf4j.Logger;
@@ -33,6 +35,9 @@ public class AuthView extends VBox implements WorkspaceView {
     private final PasswordField passwordField;
     private final Label errorLabel;
     private final Button loginButton;
+    private final ProgressIndicator progressIndicator;
+    private final Label progressLabel;
+    private final HBox progressRow;
     
     public AuthView(WorkspaceContainer container) {
         this.container = container;
@@ -79,7 +84,24 @@ public class AuthView extends VBox implements WorkspaceView {
         loginButton.setMaxWidth(Double.MAX_VALUE);
         loginButton.setOnAction(e -> attemptLogin());
         
-        card.getChildren().addAll(title, errorLabel, loginField, passwordField, loginButton);
+        // Индикатор загрузки — маленький крутящийся спиннер + текст текущего
+        // шага, чтобы было явно видно, что программа работает, а не
+        // зависла, пока идёт обращение к серверу (особенно если сервер
+        // отвечает медленно).
+        progressIndicator = new ProgressIndicator();
+        progressIndicator.setPrefSize(20, 20);
+        progressIndicator.setMaxSize(20, 20);
+        
+        progressLabel = new Label();
+        progressLabel.getStyleClass().add("auth-progress-label");
+        
+        progressRow = new HBox(8);
+        progressRow.setAlignment(Pos.CENTER_LEFT);
+        progressRow.getChildren().addAll(progressIndicator, progressLabel);
+        progressRow.setVisible(false);
+        progressRow.setManaged(false);
+        
+        card.getChildren().addAll(title, errorLabel, loginField, passwordField, loginButton, progressRow);
         getChildren().add(card);
     }
     
@@ -95,6 +117,7 @@ public class AuthView extends VBox implements WorkspaceView {
         errorLabel.setVisible(false);
         loginButton.setDisable(true);
         loginButton.setText("Вход...");
+        showProgress("Подключение к серверу...");
         
         new Thread(() -> {
             try {
@@ -103,9 +126,11 @@ public class AuthView extends VBox implements WorkspaceView {
                         new DjangoAuthenticationProvider(httpClient, ServerConfig.BASE_URL);
 
                 DjangoAuthenticationProvider.DjangoAuthResult result =
-                        provider.authenticate(login, password);
+                        provider.authenticate(login, password,
+                                message -> javafx.application.Platform.runLater(() -> progressLabel.setText(message)));
                 
                 javafx.application.Platform.runLater(() -> {
+                    hideProgress();
                     if (result.isSuccess()) {
                         ApplicationState.getInstance()
                                 .login(login, result.getHttpClient().orElse(httpClient));
@@ -124,12 +149,24 @@ public class AuthView extends VBox implements WorkspaceView {
             } catch (Exception e) {
                 logger.error("Login error", e);
                 javafx.application.Platform.runLater(() -> {
+                    hideProgress();
                     showError("Ошибка: " + e.getMessage());
                     loginButton.setDisable(false);
                     loginButton.setText("Войти");
                 });
             }
         }).start();
+    }
+    
+    private void showProgress(String message) {
+        progressLabel.setText(message);
+        progressRow.setVisible(true);
+        progressRow.setManaged(true);
+    }
+    
+    private void hideProgress() {
+        progressRow.setVisible(false);
+        progressRow.setManaged(false);
     }
     
     private void showError(String message) {
@@ -178,6 +215,7 @@ public class AuthView extends VBox implements WorkspaceView {
         errorLabel.setVisible(false);
         loginButton.setDisable(false);
         loginButton.setText("Войти");
+        hideProgress();
     }
     
     /**

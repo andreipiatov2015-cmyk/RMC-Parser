@@ -28,6 +28,9 @@ public enum WorkspaceState {
     /** Подробная информация по конкретному избранному учреждению */
     INSTITUTION_DETAIL,
     
+    /** RMCAI — чат с нейросетью по данным сайта */
+    RMC_AI,
+    
     /** Error occurred */
     ERROR
 }

@@ -64,14 +64,20 @@ public final class EasterEggState {
     }
     
     public boolean isFinished() {
-        return clickIndex >= EasterEggMessages.SEQUENCE.size();
+        // Ограничение снято по запросу — кнопку теперь нельзя "исчерпать",
+        // нажимать можно бесконечно. Метод оставлен (а не удалён), чтобы
+        // не переписывать всю логику в StatusBar — просто больше никогда
+        // не блокирует клик.
+        return false;
     }
     
     /**
-     * @return следующая реплика по счёту и продвигает счётчик на один клик вперёд
+     * @return следующая реплика по счёту, зацикленная — после последней
+     * фразы снова начинает с первой (а не блокирует кнопку)
      */
     public String advanceAndGetMessage() {
-        String message = EasterEggMessages.SEQUENCE.get(clickIndex);
+        int index = clickIndex % EasterEggMessages.SEQUENCE.size();
+        String message = EasterEggMessages.SEQUENCE.get(index);
         clickIndex++;
         save();
         return message;

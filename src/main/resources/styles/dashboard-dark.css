@@ -135,6 +135,11 @@
     -fx-text-fill: #E6EDF3;
 }
 
+.dark-theme .easter-egg-bubble {
+    -fx-background-color: #21262D;
+    -fx-text-fill: #E6EDF3;
+}
+
 /* ========== Auth View ========== */
 .dark-theme .auth-card {
     -fx-background-color: #161B22;
@@ -207,8 +212,7 @@
     -fx-text-fill: #E6EDF3;
 }
 
-.dark-theme .loading-dots,
-.dark-theme .loading-progress {
+.dark-theme .loading-status-small {
     -fx-text-fill: #8B949E;
 }
 
@@ -246,10 +250,13 @@
 .dark-theme .filter-card,
 .dark-theme .results-stat-card,
 .dark-theme .results-institution-row,
-.dark-theme .results-placeholder,
-.dark-theme .donut-chart {
+.dark-theme .results-placeholder {
     -fx-background-color: #161B22;
     -fx-border-color: #30363D;
+}
+
+.dark-theme .donut-chart {
+    -fx-background-color: transparent;
 }
 
 .dark-theme .donut-track {
@@ -257,18 +264,29 @@
 }
 
 .dark-theme .donut-count,
-.dark-theme .donut-count-small {
+.dark-theme .donut-percent-only-small {
     -fx-text-fill: #E6EDF3;
 }
 
-.dark-theme .donut-percent,
-.dark-theme .donut-percent-small {
+.dark-theme .donut-percent {
     -fx-text-fill: #8B949E;
 }
 
-.dark-theme .institution-summary-item {
+.dark-theme .institution-summary-card {
+    -fx-background-color: #161B22;
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .institution-summary-value {
+    -fx-text-fill: #58A6FF;
+}
+
+.dark-theme .institution-summary-label {
     -fx-text-fill: #8B949E;
-    -fx-background-color: #21262D;
+}
+
+.dark-theme .institution-loading-title {
+    -fx-text-fill: #E6EDF3;
 }
 
 .dark-theme .filter-card:hover {

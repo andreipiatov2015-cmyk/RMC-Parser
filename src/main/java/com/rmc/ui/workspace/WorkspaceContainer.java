@@ -38,6 +38,7 @@ public class WorkspaceContainer extends StackPane {
     private final ErrorView errorView;
     private final FavoritesView favoritesView;
     private final InstitutionDetailView institutionDetailView;
+    private final RmcAiView rmcAiView;
     
     // References
     private Dashboard dashboard;
@@ -59,6 +60,7 @@ public class WorkspaceContainer extends StackPane {
         errorView = new ErrorView(this);
         favoritesView = new FavoritesView(this);
         institutionDetailView = new InstitutionDetailView(this);
+        rmcAiView = new RmcAiView(this);
         
         // Начинаем с выбора аккаунта, если есть сохранённые, иначе — с формы входа
         if (AccountPickerView.hasSavedAccounts()) {
@@ -142,6 +144,7 @@ public class WorkspaceContainer extends StackPane {
             case RESULTS -> resultsView;
             case FAVORITES -> favoritesView;
             case INSTITUTION_DETAIL -> institutionDetailView;
+            case RMC_AI -> rmcAiView;
             case ERROR -> errorView;
         };
     }
@@ -160,6 +163,13 @@ public class WorkspaceContainer extends StackPane {
      */
     public void showFavorites() {
         transitionTo(WorkspaceState.FAVORITES);
+    }
+    
+    /**
+     * Перейти на экран "RMCAI" — чат с нейросетью по данным сайта.
+     */
+    public void showRmcAi() {
+        transitionTo(WorkspaceState.RMC_AI);
     }
     
     /**
