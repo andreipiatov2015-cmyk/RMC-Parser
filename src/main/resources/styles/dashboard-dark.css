@@ -394,3 +394,57 @@
 .dark-theme .app-dialog .button-bar .button:hover {
     -fx-background-color: #30363D;
 }
+
+/* ========== Top Bar: icon buttons + user block ========== */
+.dark-theme .topbar-icon-button:hover,
+.dark-theme .topbar-user-block:hover {
+    -fx-background-color: #21262D;
+}
+
+.dark-theme .topbar-avatar {
+    -fx-background-color: #30363D;
+}
+
+/* ========== Dashboard: свёрнутая полоска + заголовок с кнопками ========== */
+.dark-theme .dashboard-rail-button,
+.dark-theme .dashboard-header-button {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .dashboard-rail-button:hover,
+.dark-theme .dashboard-header-button:hover {
+    -fx-text-fill: #58A6FF;
+    -fx-background-color: #21262D;
+}
+
+/* ========== Settings window ========== */
+.dark-theme .settings-category-list {
+    -fx-background-color: #0D1117;
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .settings-category-item {
+    -fx-text-fill: #E6EDF3;
+}
+
+.dark-theme .settings-category-item:hover {
+    -fx-background-color: #21262D;
+}
+
+.dark-theme .settings-category-item-active {
+    -fx-background-color: #1F2C3A;
+    -fx-text-fill: #58A6FF;
+}
+
+.dark-theme .settings-content-area {
+    -fx-background-color: #161B22;
+}
+
+/* ========== Filters: сворачиваемые секции ========== */
+.dark-theme .filter-section-pane > .title {
+    -fx-background-color: #21262D;
+}
+
+.dark-theme .filter-section-pane > .title > .text {
+    -fx-fill: #E6EDF3;
+}

@@ -345,6 +345,9 @@ public class WorkspaceContainer extends StackPane {
     public void onAnalysisComplete(AnalysisResult result) {
         transitionTo(WorkspaceState.RESULTS,
                 () -> ((ResultsView) currentView).setResult(result));
+        if (dashboard != null) {
+            dashboard.onResultsShown();
+        }
     }
     
     public void onAnalysisFailed(String error) {

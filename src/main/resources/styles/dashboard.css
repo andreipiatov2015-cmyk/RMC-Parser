@@ -941,3 +941,110 @@
     -fx-background-color: #E8ECF0;
 }
 
+/* ========== Top Bar: icon buttons + user block (заменяют старые
+   menu-button/settings-button/switch-user-button/connection-dot) ========== */
+.topbar-icon-button {
+    -fx-font-size: 16px;
+    -fx-cursor: hand;
+    -fx-background-color: transparent;
+    -fx-background-radius: 6;
+    -fx-padding: 8 8 8 8;
+}
+
+.topbar-icon-button:hover {
+    -fx-background-color: #F0F4F8;
+}
+
+.topbar-user-block {
+    -fx-cursor: hand;
+    -fx-background-color: transparent;
+    -fx-background-radius: 20;
+}
+
+.topbar-user-block:hover {
+    -fx-background-color: #F0F4F8;
+}
+
+.topbar-avatar {
+    -fx-background-color: #EAEEF2;
+    -fx-background-radius: 50%;
+}
+
+.topbar-avatar-icon {
+    -fx-font-size: 14px;
+}
+
+/* ========== Dashboard: свёрнутая полоска + заголовок с кнопками ========== */
+.dashboard-rail-button {
+    -fx-font-size: 14px;
+    -fx-text-fill: #57606A;
+    -fx-cursor: hand;
+    -fx-background-color: transparent;
+    -fx-background-radius: 6;
+    -fx-padding: 8;
+}
+
+.dashboard-rail-button:hover {
+    -fx-text-fill: #0969DA;
+    -fx-background-color: #EAEEF2;
+}
+
+.dashboard-header-button {
+    -fx-font-size: 13px;
+    -fx-text-fill: #57606A;
+    -fx-cursor: hand;
+    -fx-background-color: transparent;
+    -fx-background-radius: 4;
+    -fx-padding: 4 6 4 6;
+}
+
+.dashboard-header-button:hover {
+    -fx-text-fill: #0969DA;
+    -fx-background-color: #EAEEF2;
+}
+
+/* ========== Settings window ========== */
+.settings-category-list {
+    -fx-background-color: #F6F8FA;
+    -fx-border-color: #E8ECF0;
+    -fx-border-width: 0 1 0 0;
+}
+
+.settings-category-item {
+    -fx-font-size: 13px;
+    -fx-text-fill: #24292F;
+    -fx-cursor: hand;
+    -fx-background-radius: 6;
+    -fx-padding: 8 10 8 10;
+}
+
+.settings-category-item:hover {
+    -fx-background-color: #EAEEF2;
+}
+
+.settings-category-item-active {
+    -fx-background-color: #E6F1FB;
+    -fx-text-fill: #0969DA;
+    -fx-font-weight: 600;
+}
+
+.settings-content-area {
+    -fx-background-color: #FFFFFF;
+}
+
+/* ========== Filters: сворачиваемые секции ========== */
+.filter-section-pane {
+    -fx-background-color: transparent;
+}
+
+.filter-section-pane > .title {
+    -fx-background-color: #F6F8FA;
+    -fx-background-radius: 6;
+}
+
+.filter-section-pane > .title > .text {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-fill: #24292F;
+}
+

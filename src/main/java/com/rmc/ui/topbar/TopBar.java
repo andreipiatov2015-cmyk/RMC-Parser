@@ -3,49 +3,51 @@ package com.rmc.ui.topbar;
 import com.rmc.auth.account.AccountStorageService;
 import com.rmc.auth.account.SavedAccount;
 import com.rmc.state.ApplicationState;
+import com.rmc.ui.settings.SettingsWindow;
 import com.rmc.ui.theme.ThemeService;
-import com.rmc.version.VersionService;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Circle;
-import javafx.stage.FileChooser;
-
-import java.io.File;
 
 /**
- * Top bar - always visible header.
+ * Верхняя панель — всегда на виду, независимо от текущего экрана.
+ *
+ * <p>Раньше здесь дублировались логин пользователя, статус подключения и
+ * версия программы (каждое ещё в одном-двух других местах интерфейса).
+ * Теперь версия и статус подключения показываются только в {@code
+ * StatusBar} внизу, а здесь — единственный блок "аватар + логин", клик по
+ * которому открывает меню (Выход / Сменить пользователя / Настройки).
+ * Рядом — быстрый доступ к избранному, RMCAI-чату и переключению темы.</p>
  */
 public class TopBar extends HBox {
     
-    private final Label menuButton;
     private final Label titleLabel;
-    private final Label versionLabel;
-    private final Label userLabel;
-    private final Label switchUserButton;
-    private final ConnectionIndicator connectionIndicator;
-    private final Label settingsButton;
-    private final ContextMenu settingsMenu;
+    private final Label favoritesButton;
+    private final Label rmcAiButton;
+    private final Label themeButton;
+    private final StackPane avatarCircle;
+    private final Label userNameLabel;
+    private final HBox userBlock;
+    private final ContextMenu userMenu;
     
-    private Runnable onMenuClick;
     private Runnable onSwitchUser;
     private Runnable onLogoutConfirmed;
+    private Runnable onShowFavorites;
+    private Runnable onShowRmcAi;
     
     public TopBar() {
         getStyleClass().add("top-bar");
@@ -53,106 +55,156 @@ public class TopBar extends HBox {
         setAlignment(Pos.CENTER_LEFT);
         setPrefHeight(48);
         
-        // Menu button
-        menuButton = new Label("☰");
-        menuButton.getStyleClass().add("menu-button");
-        menuButton.setOnMouseClicked(e -> {
-            if (onMenuClick != null) {
-                onMenuClick.run();
-            }
-        });
-        
-        // Title
         titleLabel = new Label("RMC Framework");
         titleLabel.getStyleClass().add("title-label");
         
-        // Version
-        versionLabel = new Label("v" + VersionService.getCurrentVersionString());
-        versionLabel.getStyleClass().add("version-label");
-        
-        // Spacer
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         
-        // User label
-        userLabel = new Label();
-        userLabel.getStyleClass().add("user-label");
+        // Быстрый доступ — раньше эти два пункта были только в выезжающем
+        // меню, теперь на виду всегда, с подсказкой при наведении.
+        favoritesButton = iconButton("⭐", "Избранные учреждения");
+        favoritesButton.setOnMouseClicked(e -> {
+            if (onShowFavorites != null) {
+                onShowFavorites.run();
+            }
+        });
         
-        // Switch user button
-        switchUserButton = new Label("Сменить пользователя");
-        switchUserButton.getStyleClass().add("switch-user-button");
-        switchUserButton.setOnMouseClicked(e -> {
+        rmcAiButton = iconButton("🤖", "RMCAI");
+        rmcAiButton.setOnMouseClicked(e -> {
+            if (onShowRmcAi != null) {
+                onShowRmcAi.run();
+            }
+        });
+        
+        // Быстрое переключение темы — дублирует то же самое в "Настройках",
+        // но тему меняют часто, доставать её из настроек каждый раз неудобно.
+        themeButton = new Label(themeIcon());
+        themeButton.getStyleClass().add("topbar-icon-button");
+        Tooltip themeTooltipControl = new Tooltip(themeTooltip());
+        Tooltip.install(themeButton, themeTooltipControl);
+        themeButton.setOnMouseClicked(e -> {
+            ThemeService.toggle();
+            themeButton.setText(themeIcon());
+            themeTooltipControl.setText(themeTooltip());
+        });
+        
+        // Блок "аватар + логин" — единственное место, где теперь
+        // показывается, кто авторизован.
+        avatarCircle = new StackPane();
+        avatarCircle.setPrefSize(28, 28);
+        avatarCircle.setMaxSize(28, 28);
+        avatarCircle.setMinSize(28, 28);
+        avatarCircle.getStyleClass().add("topbar-avatar");
+        
+        userNameLabel = new Label();
+        userNameLabel.getStyleClass().add("user-label");
+        
+        userBlock = new HBox(8, avatarCircle, userNameLabel);
+        userBlock.getStyleClass().add("topbar-user-block");
+        userBlock.setAlignment(Pos.CENTER_LEFT);
+        userBlock.setPadding(new Insets(4, 10, 4, 6));
+        
+        MenuItem logoutItem = new MenuItem("Выход");
+        logoutItem.setOnAction(e -> confirmLogout());
+        MenuItem switchUserItem = new MenuItem("Сменить пользователя");
+        switchUserItem.setOnAction(e -> {
             if (onSwitchUser != null) {
                 onSwitchUser.run();
             }
         });
+        MenuItem settingsItem = new MenuItem("Настройки");
+        settingsItem.setOnAction(e -> SettingsWindow.show(
+                getScene() != null ? getScene().getWindow() : null, this::refreshUserBlock));
         
-        // Connection indicator
-        connectionIndicator = new ConnectionIndicator();
+        userMenu = new ContextMenu(logoutItem, switchUserItem, settingsItem);
+        userBlock.setOnMouseClicked(e -> userMenu.show(userBlock, Side.BOTTOM, 0, 4));
         
-        // Settings button + dropdown menu
-        settingsButton = new Label("⚙");
-        settingsButton.getStyleClass().add("settings-button");
+        getChildren().addAll(titleLabel, spacer, favoritesButton, rmcAiButton, themeButton, userBlock);
         
-        MenuItem appearanceItem = new MenuItem("Настроить внешний вид учётной записи");
-        appearanceItem.setOnAction(e -> showAppearanceSettings());
-        
-        MenuItem logoutItem = new MenuItem("Выход");
-        logoutItem.setOnAction(e -> confirmLogout());
-        
-        settingsMenu = new ContextMenu(appearanceItem, logoutItem);
-        settingsButton.setOnMouseClicked(e -> settingsMenu.show(settingsButton, Side.BOTTOM, 0, 4));
-        
-        getChildren().addAll(menuButton, titleLabel, versionLabel, spacer,
-                userLabel, switchUserButton, connectionIndicator, settingsButton);
-        
-        updateUserInfo();
-        updateConnectionStatus();
+        refreshUserBlock();
     }
     
-    public void setOnMenuClick(Runnable handler) {
-        this.onMenuClick = handler;
+    private Label iconButton(String icon, String tooltipText) {
+        Label label = new Label(icon);
+        label.getStyleClass().add("topbar-icon-button");
+        Tooltip.install(label, new Tooltip(tooltipText));
+        return label;
     }
     
-    /**
-     * Вызывается при клике "Сменить пользователя" — обработчик должен
-     * показать экран выбора учётной записи.
-     */
+    private String themeIcon() {
+        return ThemeService.isDarkMode() ? "☀" : "🌙";
+    }
+    
+    private String themeTooltip() {
+        return ThemeService.isDarkMode() ? "Светлая тема" : "Тёмная тема";
+    }
+    
     public void setOnSwitchUser(Runnable handler) {
         this.onSwitchUser = handler;
     }
     
     /**
-     * Вызывается ПОСЛЕ того, как пользователь подтвердил выход в диалоге
-     * (само диалоговое окно показывает TopBar) — обработчик должен
-     * выполнить фактический выход ({@code ApplicationState.logout()}) и
-     * переключить экран.
+     * Вызывается ПОСЛЕ того, как пользователь подтвердил выход в диалоге —
+     * обработчик должен выполнить фактический выход
+     * ({@code ApplicationState.logout()}) и переключить экран.
      */
     public void setOnLogoutConfirmed(Runnable handler) {
         this.onLogoutConfirmed = handler;
     }
     
-    public void onAuthStateChanged() {
-        updateUserInfo();
+    public void setOnShowFavorites(Runnable handler) {
+        this.onShowFavorites = handler;
     }
     
-    private void updateUserInfo() {
+    public void setOnShowRmcAi(Runnable handler) {
+        this.onShowRmcAi = handler;
+    }
+    
+    public void onAuthStateChanged() {
+        refreshUserBlock();
+    }
+    
+    /**
+     * Перерисовывает аватар и логин — вызывается при входе/выходе, а
+     * также после закрытия окна настроек (вдруг пользователь сменил
+     * аватар или отображаемое имя на вкладке "Профиль").
+     */
+    private void refreshUserBlock() {
         ApplicationState state = ApplicationState.getInstance();
         boolean authenticated = state.isAuthenticated();
         
-        userLabel.setText(authenticated ? state.getUsername() : "");
-        switchUserButton.setVisible(authenticated);
-        switchUserButton.setManaged(authenticated);
-    }
-    
-    private void updateConnectionStatus() {
-        // In real implementation, check actual connection
-        ApplicationState state = ApplicationState.getInstance();
-        connectionIndicator.setConnected(state.isAuthenticated());
-    }
-    
-    public void setConnected(boolean connected) {
-        connectionIndicator.setConnected(connected);
+        userBlock.setVisible(authenticated);
+        userBlock.setManaged(authenticated);
+        if (!authenticated) {
+            return;
+        }
+        
+        String username = state.getUsername();
+        String displayName = AccountStorageService.loadAll().stream()
+                .filter(a -> a.getUsername().equalsIgnoreCase(username))
+                .findFirst()
+                .flatMap(SavedAccount::getDisplayName)
+                .filter(name -> !name.isBlank())
+                .orElse(username);
+        userNameLabel.setText(displayName);
+        
+        avatarCircle.getChildren().clear();
+        var avatarFile = AccountStorageService.getAvatarFile(username);
+        if (avatarFile.isPresent()) {
+            try {
+                Image image = new Image(avatarFile.get().toURI().toString(), 56, 56, true, true, true);
+                Circle circle = new Circle(14);
+                circle.setFill(new ImagePattern(image));
+                avatarCircle.getChildren().add(circle);
+                return;
+            } catch (Exception ignored) {
+                // покажем заглушку ниже
+            }
+        }
+        Label placeholder = new Label("👤");
+        placeholder.getStyleClass().add("topbar-avatar-icon");
+        avatarCircle.getChildren().add(placeholder);
     }
     
     private void confirmLogout() {
@@ -176,139 +228,13 @@ public class TopBar extends HBox {
         });
     }
     
-    /**
-     * Настройка внешнего вида учётной записи — доступна только если
-     * пользователь авторизован. Позволяет сменить аватар (показывается
-     * на экране выбора аккаунта вместо заглушки-человечка) и задать
-     * отображаемое имя (крупно на карточке вместо логина, сам логин —
-     * мелким серым текстом под ним).
-     */
-    private void showAppearanceSettings() {
-        ApplicationState state = ApplicationState.getInstance();
-        if (!state.isAuthenticated()) {
-            Alert info = new Alert(Alert.AlertType.INFORMATION);
-            info.setTitle("Настройка внешнего вида");
-            info.setHeaderText(null);
-            info.setContentText("Сначала войдите в систему, чтобы настроить профиль учётной записи.");
-            styleDialog(info);
-            info.showAndWait();
-            return;
-        }
-        
-        String username = state.getUsername();
-        boolean accountIsSaved = AccountStorageService.isSaved(username);
-        
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Настройка внешнего вида учётной записи");
-        dialog.getDialogPane().getStylesheets().add(
-                getClass().getResource("/styles/dashboard.css").toExternalForm());
-        dialog.getDialogPane().getStylesheets().add(
-                getClass().getResource("/styles/dashboard-dark.css").toExternalForm());
-        dialog.getDialogPane().getStyleClass().add("app-dialog");
-        if (ThemeService.isDarkMode()) {
-            dialog.getDialogPane().getStyleClass().add("dark-theme");
-        }
-        
-        // Предпросмотр аватара
-        StackPane avatarPreview = new StackPane();
-        avatarPreview.setPrefSize(96, 96);
-        avatarPreview.setMaxSize(96, 96);
-        avatarPreview.setMinSize(96, 96);
-        avatarPreview.getStyleClass().add("account-avatar");
-        
-        File[] chosenAvatarFile = new File[1];
-        
-        Runnable refreshAvatarPreview = () -> {
-            avatarPreview.getChildren().clear();
-            File fileToShow = chosenAvatarFile[0] != null
-                    ? chosenAvatarFile[0]
-                    : AccountStorageService.getAvatarFile(username).orElse(null);
-            if (fileToShow != null) {
-                try {
-                    Image image = new Image(fileToShow.toURI().toString(), 192, 192, true, true, true);
-                    Circle circle = new Circle(48);
-                    circle.setFill(new ImagePattern(image));
-                    avatarPreview.getChildren().add(circle);
-                    return;
-                } catch (Exception ignored) {
-                    // покажем заглушку ниже
-                }
-            }
-            Label placeholder = new Label("👤");
-            placeholder.getStyleClass().add("account-avatar-icon");
-            avatarPreview.getChildren().add(placeholder);
-        };
-        refreshAvatarPreview.run();
-        
-        Button chooseAvatarButton = new Button("Выбрать изображение...");
-        chooseAvatarButton.setOnAction(e -> {
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Выберите изображение для аватара");
-            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
-                    "Изображения", "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"));
-            File selected = fileChooser.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
-            if (selected != null) {
-                chosenAvatarFile[0] = selected;
-                refreshAvatarPreview.run();
-            }
-        });
-        
-        VBox content = new VBox(14);
-        content.setPadding(new Insets(20));
-        content.setAlignment(Pos.CENTER);
-        content.getChildren().addAll(avatarPreview, chooseAvatarButton);
-        
-        if (!accountIsSaved) {
-            Label note = new Label("Учётная запись \"" + username + "\" не сохранена (не отмечена \"Сохранить "
-                    + "данные для входа\" при входе) — настройки внешнего вида доступны только для сохранённых "
-                    + "учётных записей, показываются на экране их выбора.");
-            note.setWrapText(true);
-            note.setMaxWidth(320);
-            note.getStyleClass().add("account-picker-status");
-            content.getChildren().add(note);
-            
-            dialog.getDialogPane().setContent(content);
-            dialog.getDialogPane().getButtonTypes().setAll(ButtonType.CLOSE);
-            dialog.showAndWait();
-            return;
-        }
-        
-        Label nameFieldLabel = new Label("Отображаемое имя (необязательно):");
-        nameFieldLabel.getStyleClass().add("account-picker-status");
-        
-        TextField displayNameField = new TextField();
-        displayNameField.setPromptText("Например: Администратор");
-        displayNameField.setMaxWidth(260);
-        AccountStorageService.loadAll().stream()
-                .filter(a -> a.getUsername().equalsIgnoreCase(username))
-                .findFirst()
-                .flatMap(SavedAccount::getDisplayName)
-                .ifPresent(displayNameField::setText);
-        
-        content.getChildren().addAll(nameFieldLabel, displayNameField);
-        dialog.getDialogPane().setContent(content);
-        
-        ButtonType saveButtonType = new ButtonType("Сохранить", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().setAll(saveButtonType, ButtonType.CANCEL);
-        
-        dialog.showAndWait().ifPresent(button -> {
-            if (button == saveButtonType) {
-                if (chosenAvatarFile[0] != null) {
-                    AccountStorageService.saveAvatar(username, chosenAvatarFile[0]);
-                }
-                String newDisplayName = displayNameField.getText();
-                AccountStorageService.setDisplayName(username, newDisplayName == null ? "" : newDisplayName.trim());
-            }
-        });
-    }
-    
     private void styleDialog(Alert alert) {
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/styles/dashboard.css").toExternalForm());
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/styles/dashboard-dark.css").toExternalForm());
         alert.getDialogPane().getStyleClass().add("app-dialog");
-        if (com.rmc.ui.theme.ThemeService.isDarkMode()) {
+        if (ThemeService.isDarkMode()) {
             alert.getDialogPane().getStyleClass().add("dark-theme");
         }
     }

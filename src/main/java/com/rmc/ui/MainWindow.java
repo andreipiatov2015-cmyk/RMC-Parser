@@ -63,11 +63,13 @@ public class MainWindow extends BorderPane {
         workspace.setReferences(dashboard, statusBar);
         dashboard.setWorkspace(workspace);
         
-        // Connect navigation drawer to topbar menu button
-        topBar.setOnMenuClick(() -> navigationDrawer.toggle());
-        
         // Смена пользователя — на экран выбора учётной записи
         topBar.setOnSwitchUser(workspace::showAccountPicker);
+        
+        // Избранное и RMCAI-чат — теперь напрямую иконками в TopBar,
+        // а не через выезжающее меню.
+        topBar.setOnShowFavorites(workspace::showFavorites);
+        topBar.setOnShowRmcAi(workspace::showRmcAi);
         
         // Выход подтверждён в диалоге TopBar — выполняем сам выход и ведём
         // на форму входа с подставленным логином. Сохранённая учётная

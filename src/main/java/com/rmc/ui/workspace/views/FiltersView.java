@@ -13,6 +13,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
+import javafx.scene.control.TitledPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -90,40 +91,33 @@ public class FiltersView extends VBox implements WorkspaceView {
                 continue;
             }
             
-            // Первая секция на сайте идёт без заголовка — остальные подписаны
-            // так же, как разделители на самой странице.
-            if (!firstVisibleGroup) {
-                filterCardsContainer.getChildren().add(createSectionHeader(group.getTitle()));
-            }
+            // Каждая секция — отдельный сворачиваемый блок, чтобы длинный
+            // список фильтров не приходилось листать целиком. Первая
+            // секция на сайте идёт без заголовка — даём ей своё название,
+            // раз сворачиваемому блоку заголовок нужен в любом случае.
+            String title = (group.getTitle() != null && !group.getTitle().isBlank())
+                    ? group.getTitle()
+                    : (firstVisibleGroup ? "Основные" : "Фильтры");
             firstVisibleGroup = false;
             
-            filterCardsContainer.getChildren().add(createSectionGrid(groupFilters));
+            filterCardsContainer.getChildren().add(createSectionPane(title, groupFilters));
         }
         
         statusLabel.setText("Загружено фильтров: " + filterCards.size());
     }
     
     /**
-     * Заголовок секции — подпись по центру между двумя линиями,
-     * повторяет ".ui.horizontal.divider.header" на сайте.
+     * Сворачиваемая секция фильтров — заголовок со стрелкой сворачивания
+     * (встроено в {@link TitledPane}) и сетка карточек внутри. Развёрнута
+     * по умолчанию, чтобы поведение не менялось для тех, кто уже привык
+     * видеть все фильтры сразу — сворачивать теперь можно по желанию.
      */
-    private Node createSectionHeader(String title) {
-        HBox header = new HBox();
-        header.getStyleClass().add("filter-section-header");
-        header.setAlignment(Pos.CENTER);
-        header.setSpacing(12);
-        header.setPadding(new Insets(8, 0, 0, 0));
-        
-        Separator left = new Separator();
-        HBox.setHgrow(left, Priority.ALWAYS);
-        Separator right = new Separator();
-        HBox.setHgrow(right, Priority.ALWAYS);
-        
-        Label label = new Label(title);
-        label.getStyleClass().add("filter-section-title");
-        
-        header.getChildren().addAll(left, label, right);
-        return header;
+    private TitledPane createSectionPane(String title, List<FilterDefinition> groupFilters) {
+        TitledPane pane = new TitledPane(title, createSectionGrid(groupFilters));
+        pane.getStyleClass().add("filter-section-pane");
+        pane.setExpanded(true);
+        pane.setAnimated(true);
+        return pane;
     }
     
     /**
