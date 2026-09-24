@@ -1,6 +1,7 @@
 package com.rmc.search.service;
 
 import com.rmc.logging.AppLogger;
+import com.rmc.parser.OrganizationStatsParser;
 import com.rmc.parser.ProgramDetailParser;
 import com.rmc.parser.ProgramParser;
 import com.rmc.parser.model.Organization;
@@ -22,20 +23,26 @@ import java.util.Map;
  *       программы не закончатся;</li>
  *   <li>группирует найденные программы по учреждению (по ID, т.к. одно
  *       учреждение обычно ведёт несколько программ);</li>
- *   <li>для каждого учреждения заходит на страницу КАЖДОЙ его программы,
- *       вошедшей в отфильтрованный список, и суммирует их показатели —
- *       не показатели учреждения целиком, а только тех программ, что
- *       реально прошли фильтр (например, только программы для детей с
- *       ОВЗ, если выбран такой фильтр);</li>
- *   <li>суммирует показатели по всем учреждениям и хранит разбивку по
- *       каждому отдельно.</li>
+ *   <li>для каждого учреждения считает ОБА набора показателей сразу:
+ *       <ul>
+ *         <li><b>по фильтру</b> — заходит на страницу КАЖДОЙ программы
+ *             учреждения, вошедшей в отфильтрованный список, и суммирует
+ *             их показатели (например, только программы для детей с ОВЗ,
+ *             если выбран такой фильтр), плюс считает сколько таких
+ *             программ у учреждения нашлось;</li>
+ *         <li><b>по учреждению целиком</b> — заходит на страницу самого
+ *             учреждения ({@code /org/{id}/}) и берёт показатели оттуда,
+ *             без учёта фильтра, как это было в самой первой версии
+ *             программы;</li>
+ *       </ul>
+ *   </li>
+ *   <li>суммирует оба набора показателей по всем учреждениям и хранит
+ *       разбивку по каждому отдельно.</li>
  * </ol>
  *
- * <p>Раньше показатели брались целиком со страницы учреждения
- * ({@code /org/{id}/}), что включало вообще все программы этого
- * учреждения — из-за этого счётчики "программ" и "учреждений" были
- * правильно отфильтрованы, а суммы зачислений — нет. Теперь суммы
- * считаются по отдельным страницам отфильтрованных программ.</p>
+ * <p>Какой из двух наборов показывать пользователю на экране — решает UI
+ * (список галочек в результатах), здесь же всегда считаются оба, чтобы
+ * переключение галочек не требовало повторного обхода сайта.</p>
  */
 public class ProgramAnalysisService {
     
@@ -118,8 +125,7 @@ public class ProgramAnalysisService {
         
         // Уникальные учреждения по ID (одно учреждение часто ведёт
         // несколько программ из списка), и заодно — какие именно
-        // отфильтрованные программы принадлежат каждому учреждению
-        // (это и есть основа для правильного подсчёта зачислений).
+        // отфильтрованные программы принадлежат каждому учреждению.
         Map<String, Organization> uniqueOrganizations = new LinkedHashMap<>();
         Map<String, List<Program>> programsByOrgId = new LinkedHashMap<>();
         for (Program program : allPrograms) {
@@ -133,7 +139,8 @@ public class ProgramAnalysisService {
         logger.info(LOG_INSTITUTIONS_TOTAL, uniqueOrganizations.size());
         
         List<InstitutionAnalysis> institutions = new ArrayList<>();
-        Map<String, Integer> totals = new LinkedHashMap<>();
+        Map<String, Integer> filteredTotals = new LinkedHashMap<>();
+        Map<String, Integer> overallTotals = new LinkedHashMap<>();
         
         int index = 0;
         int total = uniqueOrganizations.size();
@@ -152,8 +159,11 @@ public class ProgramAnalysisService {
             institutions.add(analysis);
             
             if (analysis.isSuccess()) {
-                for (Map.Entry<String, Integer> entry : analysis.getStats().entrySet()) {
-                    totals.merge(entry.getKey(), entry.getValue(), Integer::sum);
+                for (Map.Entry<String, Integer> entry : analysis.getFilteredStats().entrySet()) {
+                    filteredTotals.merge(entry.getKey(), entry.getValue(), Integer::sum);
+                }
+                for (Map.Entry<String, Integer> entry : analysis.getOverallStats().entrySet()) {
+                    overallTotals.merge(entry.getKey(), entry.getValue(), Integer::sum);
                 }
             }
         }
@@ -162,7 +172,8 @@ public class ProgramAnalysisService {
                 .success(true)
                 .totalPrograms(allPrograms.size())
                 .totalInstitutions(uniqueOrganizations.size())
-                .totals(totals)
+                .filteredTotals(filteredTotals)
+                .overallTotals(overallTotals)
                 .institutions(institutions)
                 .build();
     }
@@ -173,11 +184,15 @@ public class ProgramAnalysisService {
      * успело обработаться к моменту отмены.
      */
     private AnalysisResult cancelledResult(int totalPrograms, List<InstitutionAnalysis> institutionsSoFar) {
-        Map<String, Integer> totals = new LinkedHashMap<>();
+        Map<String, Integer> filteredTotals = new LinkedHashMap<>();
+        Map<String, Integer> overallTotals = new LinkedHashMap<>();
         for (InstitutionAnalysis institution : institutionsSoFar) {
             if (institution.isSuccess()) {
-                for (Map.Entry<String, Integer> entry : institution.getStats().entrySet()) {
-                    totals.merge(entry.getKey(), entry.getValue(), Integer::sum);
+                for (Map.Entry<String, Integer> entry : institution.getFilteredStats().entrySet()) {
+                    filteredTotals.merge(entry.getKey(), entry.getValue(), Integer::sum);
+                }
+                for (Map.Entry<String, Integer> entry : institution.getOverallStats().entrySet()) {
+                    overallTotals.merge(entry.getKey(), entry.getValue(), Integer::sum);
                 }
             }
         }
@@ -189,18 +204,24 @@ public class ProgramAnalysisService {
                 .cancelled(true)
                 .totalPrograms(totalPrograms)
                 .totalInstitutions(institutionsSoFar.size())
-                .totals(totals)
+                .filteredTotals(filteredTotals)
+                .overallTotals(overallTotals)
                 .institutions(institutionsSoFar)
                 .build();
     }
     
     /**
-     * Считает показатели учреждения ТОЛЬКО по тем его программам, что
-     * вошли в отфильтрованный список — заходит на страницу каждой такой
-     * программы отдельно и суммирует их ".statistic"-показатели. Это и
-     * даёт корректные, отфильтрованные суммы (например, зачисления
-     * только по программам для детей с ОВЗ), а не показатели учреждения
-     * целиком.
+     * Считает ОБА набора показателей учреждения:
+     * <ul>
+     *   <li>по фильтру — заходит на страницу каждой отфильтрованной
+     *       программы учреждения отдельно и суммирует их
+     *       ".statistic"-показатели, плюс сам count таких программ;</li>
+     *   <li>по учреждению целиком — заходит на страницу учреждения и
+     *       берёт показатели оттуда, без учёта фильтра.</li>
+     * </ul>
+     * Если один из источников не удалось получить, это не мешает
+     * показать данные из другого — учреждение считается успешно
+     * обработанным, если получилось хотя бы что-то одно.
      */
     private InstitutionAnalysis analyzeInstitution(Organization org, List<Program> orgPrograms,
                                                      ProgressListener listener,
@@ -210,17 +231,26 @@ public class ProgramAnalysisService {
         String orgRelativeUrl = org.getUrl().orElse(null);
         String orgFullUrl = orgRelativeUrl != null ? resolveUrl(orgRelativeUrl) : null;
         
-        if (orgPrograms.isEmpty()) {
-            return InstitutionAnalysis.builder()
-                    .organizationId(orgId)
-                    .organizationName(orgName)
-                    .organizationUrl(orgFullUrl)
-                    .success(false)
-                    .errorMessage("Нет ни одной программы этого учреждения в отфильтрованном списке")
-                    .build();
+        // 1) Показатели по учреждению целиком (старая логика).
+        Map<String, Integer> overallStats = new LinkedHashMap<>();
+        boolean overallOk = false;
+        if (orgFullUrl != null) {
+            SearchResult orgResult = searchService.search(orgFullUrl);
+            if (orgResult.isSuccess()) {
+                OrganizationStatsParser.ParseResult statsResult = OrganizationStatsParser.parse(orgResult.getHtml());
+                if (statsResult.isSuccess()) {
+                    overallStats.putAll(statsResult.getStats());
+                    overallOk = true;
+                } else {
+                    logger.warn(LOG_ORG_PARSE_ERROR, orgFullUrl, statsResult.getErrorMessage().orElse(""));
+                }
+            } else {
+                logger.warn(LOG_ORG_FETCH_ERROR, orgFullUrl, orgResult.getErrorMessage().orElse(""));
+            }
         }
         
-        Map<String, Integer> stats = new LinkedHashMap<>();
+        // 2) Показатели только по отфильтрованным программам этого учреждения.
+        Map<String, Integer> filteredStats = new LinkedHashMap<>();
         int failedPrograms = 0;
         
         for (Program program : orgPrograms) {
@@ -251,8 +281,15 @@ public class ProgramAnalysisService {
             }
             
             for (Map.Entry<String, Integer> entry : detailResult.getStats().entrySet()) {
-                stats.merge(entry.getKey(), entry.getValue(), Integer::sum);
+                filteredStats.merge(entry.getKey(), entry.getValue(), Integer::sum);
             }
+        }
+        
+        // Синтетический показатель: сколько программ этого учреждения
+        // прошло фильтр — считается всегда, даже если показатели с их
+        // страниц получить не удалось (сам список программ у нас уже есть).
+        if (!orgPrograms.isEmpty()) {
+            filteredStats.put(InstitutionAnalysis.FILTERED_PROGRAM_COUNT_LABEL, orgPrograms.size());
         }
         
         if (failedPrograms > 0) {
@@ -260,13 +297,23 @@ public class ProgramAnalysisService {
                     + failedPrograms + " из " + orgPrograms.size() + " программ)");
         }
         
-        return InstitutionAnalysis.builder()
+        boolean filteredOk = !filteredStats.isEmpty();
+        boolean success = overallOk || filteredOk;
+        
+        InstitutionAnalysis.Builder resultBuilder = InstitutionAnalysis.builder()
                 .organizationId(orgId)
                 .organizationName(orgName)
                 .organizationUrl(orgFullUrl)
-                .success(true)
-                .stats(stats)
-                .build();
+                .filteredStats(filteredStats)
+                .overallStats(overallStats)
+                .success(success);
+        
+        if (!success) {
+            resultBuilder.errorMessage("Не удалось получить ни показатели учреждения, "
+                    + "ни показатели его программ из отфильтрованного списка");
+        }
+        
+        return resultBuilder.build();
     }
     
     private String resolveUrl(String hrefOrUrl) {
@@ -296,6 +343,8 @@ public class ProgramAnalysisService {
     private static final String LOG_CANCELLED = "Анализ отменён пользователем. Обработано учреждений: {}";
     private static final String LOG_PROGRAM_FETCH_ERROR = "Ошибка загрузки страницы программы {}: {}";
     private static final String LOG_PROGRAM_PARSE_ERROR = "Ошибка разбора страницы программы {}: {}";
+    private static final String LOG_ORG_FETCH_ERROR = "Ошибка загрузки страницы учреждения {}: {}";
+    private static final String LOG_ORG_PARSE_ERROR = "Ошибка разбора страницы учреждения {}: {}";
     
     public static class Builder {
         

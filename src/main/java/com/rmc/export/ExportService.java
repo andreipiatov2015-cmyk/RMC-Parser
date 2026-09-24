@@ -78,7 +78,17 @@ public class ExportService {
         setCell(institutionsRow, 0, "Учреждений обработано");
         setCell(institutionsRow, 1, result.getTotalInstitutions());
         
-        for (Map.Entry<String, Integer> entry : result.getTotals().entrySet()) {
+        Row filteredHeader = sheet.createRow(rowIdx++);
+        setCell(filteredHeader, 0, "— По фильтру —", headerStyle);
+        for (Map.Entry<String, Integer> entry : result.getFilteredTotals().entrySet()) {
+            Row row = sheet.createRow(rowIdx++);
+            setCell(row, 0, entry.getKey());
+            setCell(row, 1, entry.getValue());
+        }
+        
+        Row overallHeader = sheet.createRow(rowIdx++);
+        setCell(overallHeader, 0, "— По учреждению целиком —", headerStyle);
+        for (Map.Entry<String, Integer> entry : result.getOverallTotals().entrySet()) {
             Row row = sheet.createRow(rowIdx++);
             setCell(row, 0, entry.getKey());
             setCell(row, 1, entry.getValue());
@@ -94,20 +104,28 @@ public class ExportService {
         
         // Набор колонок-показателей собираем из того, что реально есть у
         // учреждений — если у одних показателей больше/меньше, чем у
-        // других, таблица всё равно останется согласованной.
-        Set<String> statColumns = new LinkedHashSet<>();
+        // других, таблица всё равно останется согласованной. Колонки по
+        // фильтру и по учреждению целиком помечаются отдельными
+        // префиксами, чтобы не перепутать их друг с другом в таблице.
+        Set<String> filteredColumns = new LinkedHashSet<>();
+        Set<String> overallColumns = new LinkedHashSet<>();
         for (InstitutionAnalysis institution : result.getInstitutions()) {
-            statColumns.addAll(institution.getStats().keySet());
+            filteredColumns.addAll(institution.getFilteredStats().keySet());
+            overallColumns.addAll(institution.getOverallStats().keySet());
         }
-        List<String> columns = new ArrayList<>(statColumns);
+        List<String> filtered = new ArrayList<>(filteredColumns);
+        List<String> overall = new ArrayList<>(overallColumns);
         
         int rowIdx = 0;
         Row header = sheet.createRow(rowIdx++);
         int col = 0;
         setCell(header, col++, "Учреждение", headerStyle);
         setCell(header, col++, "Ссылка", headerStyle);
-        for (String statName : columns) {
-            setCell(header, col++, statName, headerStyle);
+        for (String statName : filtered) {
+            setCell(header, col++, "[По фильтру] " + statName, headerStyle);
+        }
+        for (String statName : overall) {
+            setCell(header, col++, "[Учреждение целиком] " + statName, headerStyle);
         }
         setCell(header, col, "Примечание", headerStyle);
         
@@ -132,13 +150,13 @@ public class ExportService {
                 setCell(row, col++, "");
             }
             
-            for (String statName : columns) {
-                if (institution.isSuccess()) {
-                    Integer value = institution.getStats().get(statName);
-                    setCell(row, col++, value != null ? value : 0);
-                } else {
-                    setCell(row, col++, "");
-                }
+            for (String statName : filtered) {
+                Integer value = institution.getFilteredStats().get(statName);
+                setCell(row, col++, value != null ? value : 0);
+            }
+            for (String statName : overall) {
+                Integer value = institution.getOverallStats().get(statName);
+                setCell(row, col++, value != null ? value : 0);
             }
             
             setCell(row, col, institution.isSuccess()
@@ -146,7 +164,7 @@ public class ExportService {
                     : "Ошибка: " + institution.getErrorMessage().orElse("не удалось получить данные"));
         }
         
-        autoSizeColumns(sheet, columns.size() + 3);
+        autoSizeColumns(sheet, filtered.size() + overall.size() + 3);
     }
     
     private static CellStyle createLinkStyle(Workbook workbook) {

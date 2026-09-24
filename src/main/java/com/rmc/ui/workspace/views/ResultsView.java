@@ -3,6 +3,7 @@ package com.rmc.ui.workspace.views;
 import com.rmc.export.ExportService;
 import com.rmc.search.model.AnalysisResult;
 import com.rmc.search.model.InstitutionAnalysis;
+import com.rmc.search.service.StatDisplayPreferences;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import com.rmc.ui.workspace.WorkspaceView;
 import com.rmc.ui.workspace.components.ActionButton;
@@ -10,6 +11,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
@@ -25,15 +27,26 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
  * Results view - shows aggregated analysis totals and a per-institution breakdown.
+ *
+ * <p>Показатели считаются всегда в двух наборах — только по программам,
+ * прошедшим фильтр, и по учреждениям целиком (см. {@link AnalysisResult}).
+ * Какие из них реально показывать на экране, решает пользователь через
+ * сворачиваемый список галочек "⚙ Показатели"; выбор сохраняется между
+ * запусками программы ({@link StatDisplayPreferences}).</p>
  */
 public class ResultsView extends VBox implements WorkspaceView {
     
     private final WorkspaceContainer container;
+    private final StatDisplayPreferences statPrefs = new StatDisplayPreferences();
+    
     private final Label summaryLabel;
+    private final ActionButton statsToggleButton;
+    private final FlowPane statsCheckboxPane;
     private final FlowPane totalsPane;
     private final VBox institutionsList;
     private final ActionButton backButton;
@@ -54,6 +67,18 @@ public class ResultsView extends VBox implements WorkspaceView {
         summaryLabel = new Label();
         summaryLabel.getStyleClass().add("results-summary");
         
+        // Сворачиваемый список галочек: какие показатели показывать.
+        statsToggleButton = new ActionButton("⚙ Показатели ▾", ActionButton.Style.SECONDARY);
+        statsToggleButton.setOnAction(e -> toggleStatsPanel());
+        
+        statsCheckboxPane = new FlowPane();
+        statsCheckboxPane.getStyleClass().add("results-stats-checkbox-pane");
+        statsCheckboxPane.setHgap(16);
+        statsCheckboxPane.setVgap(8);
+        statsCheckboxPane.setPadding(new Insets(8, 4, 8, 4));
+        statsCheckboxPane.setVisible(false);
+        statsCheckboxPane.setManaged(false);
+        
         // Итоговые показатели по всем учреждениям
         totalsPane = new FlowPane();
         totalsPane.getStyleClass().add("results-totals-pane");
@@ -70,7 +95,8 @@ public class ResultsView extends VBox implements WorkspaceView {
         VBox scrollContent = new VBox();
         scrollContent.setSpacing(16);
         scrollContent.setPadding(new Insets(8));
-        scrollContent.getChildren().addAll(summaryLabel, totalsPane, new Separator(), institutionsTitle, institutionsList);
+        scrollContent.getChildren().addAll(summaryLabel, statsToggleButton, statsCheckboxPane,
+                totalsPane, new Separator(), institutionsTitle, institutionsList);
         
         ScrollPane scrollPane = new ScrollPane(scrollContent);
         scrollPane.setFitToWidth(true);
@@ -95,8 +121,10 @@ public class ResultsView extends VBox implements WorkspaceView {
     }
     
     /**
-     * Отобразить результат анализа: сводку, суммарные показатели по всем
-     * учреждениям и разбивку по каждому учреждению отдельно.
+     * Отобразить результат анализа: сводку, суммарные показатели (те, что
+     * отмечены галочками) и разбивку по каждому учреждению отдельно.
+     * Экспорт в Excel при этом всегда содержит ВСЕ посчитанные показатели,
+     * независимо от галочек — они влияют только на то, что видно на экране.
      */
     public void setResult(AnalysisResult result) {
         this.currentResult = (result != null && result.isSuccess()) ? result : null;
@@ -111,15 +139,62 @@ public class ResultsView extends VBox implements WorkspaceView {
                 + "  |  Учреждений: " + result.getTotalInstitutions()
                 + (result.isCancelled() ? "  —  остановлено пользователем, показаны частичные результаты" : ""));
         
+        rebuildStatsCheckboxes();
+        renderVisibleStats();
+    }
+    
+    /**
+     * @return суммарные показатели по фильтру и по учреждениям целиком,
+     * объединённые в один список (в порядке: сначала по фильтру, потом
+     * общие) — именно из этого набора строится и список галочек, и
+     * "квадратики" сверху
+     */
+    private Map<String, Integer> combinedTotals() {
+        Map<String, Integer> combined = new LinkedHashMap<>();
+        if (currentResult != null) {
+            combined.putAll(currentResult.getFilteredTotals());
+            combined.putAll(currentResult.getOverallTotals());
+        }
+        return combined;
+    }
+    
+    private void rebuildStatsCheckboxes() {
+        statsCheckboxPane.getChildren().clear();
+        for (String statName : combinedTotals().keySet()) {
+            CheckBox checkBox = new CheckBox(statName);
+            checkBox.getStyleClass().add("filter-checkbox");
+            checkBox.setSelected(statPrefs.isVisible(statName));
+            checkBox.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+                statPrefs.setVisible(statName, isSelected);
+                renderVisibleStats();
+            });
+            statsCheckboxPane.getChildren().add(checkBox);
+        }
+    }
+    
+    private void renderVisibleStats() {
+        if (currentResult == null) {
+            return;
+        }
+        
         totalsPane.getChildren().clear();
-        for (Map.Entry<String, Integer> entry : result.getTotals().entrySet()) {
-            totalsPane.getChildren().add(createStatCard(entry.getKey(), entry.getValue()));
+        for (Map.Entry<String, Integer> entry : combinedTotals().entrySet()) {
+            if (statPrefs.isVisible(entry.getKey())) {
+                totalsPane.getChildren().add(createStatCard(entry.getKey(), entry.getValue()));
+            }
         }
         
         institutionsList.getChildren().clear();
-        for (InstitutionAnalysis institution : result.getInstitutions()) {
+        for (InstitutionAnalysis institution : currentResult.getInstitutions()) {
             institutionsList.getChildren().add(createInstitutionRow(institution));
         }
+    }
+    
+    private void toggleStatsPanel() {
+        boolean nowVisible = !statsCheckboxPane.isVisible();
+        statsCheckboxPane.setVisible(nowVisible);
+        statsCheckboxPane.setManaged(nowVisible);
+        statsToggleButton.setText(nowVisible ? "⚙ Показатели ▴" : "⚙ Показатели ▾");
     }
     
     private void onExport() {
@@ -159,6 +234,7 @@ public class ResultsView extends VBox implements WorkspaceView {
     
     private void showPlaceholder() {
         summaryLabel.setText("Результаты появятся после завершения анализа");
+        statsCheckboxPane.getChildren().clear();
         totalsPane.getChildren().clear();
         institutionsList.getChildren().clear();
     }
@@ -202,13 +278,24 @@ public class ResultsView extends VBox implements WorkspaceView {
             errorLabel.getStyleClass().add("results-institution-error");
             row.getChildren().add(errorLabel);
         } else {
+            Map<String, Integer> combined = new LinkedHashMap<>();
+            combined.putAll(institution.getFilteredStats());
+            combined.putAll(institution.getOverallStats());
+            
             StringBuilder statsLine = new StringBuilder();
-            for (Map.Entry<String, Integer> entry : institution.getStats().entrySet()) {
+            for (Map.Entry<String, Integer> entry : combined.entrySet()) {
+                if (!statPrefs.isVisible(entry.getKey())) {
+                    continue;
+                }
                 if (statsLine.length() > 0) {
                     statsLine.append("   ");
                 }
                 statsLine.append(entry.getKey()).append(": ").append(entry.getValue());
             }
+            if (statsLine.length() == 0) {
+                statsLine.append("(показатели скрыты — включите нужные в разделе \"⚙ Показатели\" выше)");
+            }
+            
             Label statsLabel = new Label(statsLine.toString());
             statsLabel.getStyleClass().add("results-institution-stats");
             statsLabel.setWrapText(true);

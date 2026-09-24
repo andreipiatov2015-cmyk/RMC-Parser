@@ -8,8 +8,9 @@ import java.util.Optional;
 
 /**
  * Итог анализа по выбранным фильтрам: общее количество найденных программ
- * и учреждений, суммарные показатели по всем учреждениям и разбивка по
- * каждому учреждению отдельно.
+ * и учреждений, суммарные показатели по всем учреждениям (отдельно —
+ * только по отфильтрованным программам, отдельно — по учреждениям целиком)
+ * и разбивка по каждому учреждению отдельно.
  */
 public class AnalysisResult {
     
@@ -17,7 +18,8 @@ public class AnalysisResult {
     private final boolean cancelled;
     private final int totalPrograms;
     private final int totalInstitutions;
-    private final Map<String, Integer> totals;
+    private final Map<String, Integer> filteredTotals;
+    private final Map<String, Integer> overallTotals;
     private final List<InstitutionAnalysis> institutions;
     private final String errorMessage;
     
@@ -26,7 +28,8 @@ public class AnalysisResult {
         this.cancelled = builder.cancelled;
         this.totalPrograms = builder.totalPrograms;
         this.totalInstitutions = builder.totalInstitutions;
-        this.totals = Map.copyOf(builder.totals);
+        this.filteredTotals = Map.copyOf(builder.filteredTotals);
+        this.overallTotals = Map.copyOf(builder.overallTotals);
         this.institutions = List.copyOf(builder.institutions);
         this.errorMessage = builder.errorMessage;
     }
@@ -57,9 +60,18 @@ public class AnalysisResult {
     
     /**
      * @return суммарные показатели ("подпись" -&gt; сумма по всем учреждениям)
+     * только по программам, прошедшим фильтр
      */
-    public Map<String, Integer> getTotals() {
-        return totals;
+    public Map<String, Integer> getFilteredTotals() {
+        return filteredTotals;
+    }
+    
+    /**
+     * @return суммарные показатели по учреждениям целиком, без учёта
+     * фильтра (старая логика подсчёта)
+     */
+    public Map<String, Integer> getOverallTotals() {
+        return overallTotals;
     }
     
     public List<InstitutionAnalysis> getInstitutions() {
@@ -76,7 +88,8 @@ public class AnalysisResult {
         private boolean cancelled;
         private int totalPrograms;
         private int totalInstitutions;
-        private Map<String, Integer> totals = new LinkedHashMap<>();
+        private Map<String, Integer> filteredTotals = new LinkedHashMap<>();
+        private Map<String, Integer> overallTotals = new LinkedHashMap<>();
         private List<InstitutionAnalysis> institutions = new ArrayList<>();
         private String errorMessage;
         
@@ -100,8 +113,13 @@ public class AnalysisResult {
             return this;
         }
         
-        public Builder totals(Map<String, Integer> totals) {
-            this.totals = new LinkedHashMap<>(totals);
+        public Builder filteredTotals(Map<String, Integer> filteredTotals) {
+            this.filteredTotals = new LinkedHashMap<>(filteredTotals);
+            return this;
+        }
+        
+        public Builder overallTotals(Map<String, Integer> overallTotals) {
+            this.overallTotals = new LinkedHashMap<>(overallTotals);
             return this;
         }
         
