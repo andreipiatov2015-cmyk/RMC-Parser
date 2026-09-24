@@ -504,6 +504,15 @@
     -fx-text-fill: #57606A;
 }
 
+.loading-progress-bar {
+    -fx-accent: #0969DA;
+}
+
+.loading-eta-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #57606A;
+}
+
 .loading-cancel-button {
     -fx-background-color: transparent;
     -fx-border-color: #D0D7DE;

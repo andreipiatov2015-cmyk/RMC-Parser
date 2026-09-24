@@ -293,6 +293,7 @@ public class WorkspaceContainer extends StackPane {
         
         java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean(false);
         loadingView.setCancellable(true, () -> cancelled.set(true));
+        loadingView.resetProgress();
         
         new Thread(() -> {
             try {
@@ -306,7 +307,8 @@ public class WorkspaceContainer extends StackPane {
                         .build();
                 
                 AnalysisResult result = analysisService.analyze(queryString,
-                        status -> javafx.application.Platform.runLater(() -> updateProgress(status)),
+                        (status, current, total) -> javafx.application.Platform.runLater(
+                                () -> updateProgress(status, current, total)),
                         cancelled::get);
                 
                 javafx.application.Platform.runLater(() -> {
@@ -334,20 +336,20 @@ public class WorkspaceContainer extends StackPane {
     
     /**
      * Обновить статус на экране загрузки во время анализа
-     * (например, "Учреждение 3 из 12: МБОУ ...").
+     * (например, "Учреждение 3 из 12: МБОУ ..."). {@code current}/
+     * {@code total} — для полосы прогресса; {@code total <= 0}, если
+     * общее число шагов на этом этапе ещё не известно.
      */
-    public void updateProgress(String status) {
+    public void updateProgress(String status, int current, int total) {
         if (loadingView != null) {
             loadingView.setStatus(status);
+            loadingView.setProgress(current, total);
         }
     }
     
     public void onAnalysisComplete(AnalysisResult result) {
         transitionTo(WorkspaceState.RESULTS,
                 () -> ((ResultsView) currentView).setResult(result));
-        if (dashboard != null) {
-            dashboard.onResultsShown();
-        }
     }
     
     public void onAnalysisFailed(String error) {

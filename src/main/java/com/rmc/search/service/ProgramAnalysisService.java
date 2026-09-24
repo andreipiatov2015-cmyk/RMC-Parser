@@ -50,10 +50,15 @@ public class ProgramAnalysisService {
     private static final int MAX_PAGES = 500; // защита от зацикливания при неожиданной разметке пагинации
     
     /**
-     * Обратный вызов для отображения прогресса в UI.
+     * Обратный вызов для отображения прогресса в UI. {@code current}/
+     * {@code total} — номер текущего учреждения и их общее число (для
+     * полосы прогресса с процентом); {@code total <= 0} означает, что
+     * общее число шагов на этом этапе ещё не известно (например, во
+     * время загрузки страниц списка программ, до того как стал известен
+     * список учреждений).
      */
     public interface ProgressListener {
-        void onProgress(String message);
+        void onProgress(String message, int current, int total);
     }
     
     private final ProgramSearchService searchService;
@@ -93,7 +98,7 @@ public class ProgramAnalysisService {
             }
             
             pageCount++;
-            report(listener, "Загрузка списка программ, страница " + pageCount + "...");
+            report(listener, "Загрузка списка программ, страница " + pageCount + "...", 0, 0);
             
             String fullUrl = resolveUrl(nextRelativeUrl);
             SearchResult pageResult = searchService.search(fullUrl);
@@ -151,11 +156,11 @@ public class ProgramAnalysisService {
             
             index++;
             String orgName = org.getName() != null ? org.getName() : org.getId().orElse("?");
-            report(listener, "Учреждение " + index + " из " + total + ": " + orgName);
+            report(listener, "Учреждение " + index + " из " + total + ": " + orgName, index, total);
             
             List<Program> orgPrograms = programsByOrgId.getOrDefault(
                     org.getId().orElse(""), List.of());
-            InstitutionAnalysis analysis = analyzeInstitution(org, orgPrograms, listener, isCancelled);
+            InstitutionAnalysis analysis = analyzeInstitution(org, orgPrograms, listener, isCancelled, index, total);
             institutions.add(analysis);
             
             if (analysis.isSuccess()) {
@@ -225,7 +230,8 @@ public class ProgramAnalysisService {
      */
     private InstitutionAnalysis analyzeInstitution(Organization org, List<Program> orgPrograms,
                                                      ProgressListener listener,
-                                                     java.util.function.BooleanSupplier isCancelled) {
+                                                     java.util.function.BooleanSupplier isCancelled,
+                                                     int index, int total) {
         String orgId = org.getId().orElse("");
         String orgName = org.getName();
         String orgRelativeUrl = org.getUrl().orElse(null);
@@ -294,7 +300,7 @@ public class ProgramAnalysisService {
         
         if (failedPrograms > 0) {
             report(listener, "  (" + orgName + ": не удалось получить показатели по "
-                    + failedPrograms + " из " + orgPrograms.size() + " программ)");
+                    + failedPrograms + " из " + orgPrograms.size() + " программ)", index, total);
         }
         
         boolean filteredOk = !filteredStats.isEmpty();
@@ -328,10 +334,10 @@ public class ProgramAnalysisService {
         return base + path;
     }
     
-    private void report(ProgressListener listener, String message) {
+    private void report(ProgressListener listener, String message, int current, int total) {
         logger.info(message);
         if (listener != null) {
-            listener.onProgress(message);
+            listener.onProgress(message, current, total);
         }
     }
     

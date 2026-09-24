@@ -24,10 +24,11 @@ import java.util.List;
  * аватара в {@code TopBar}, и дублировать её здесь незачем).
  *
  * <p>Панель сворачивается в узкую полоску с одной кнопкой ("выдвинуть")
- * и разворачивается обратно так же — кнопкой в заголовке. По умолчанию
- * разворачивается автоматически, а при переходе к результатам анализа
- * снова сворачивается сама, ЕСЛИ пользователь не нажал "закрепить" —
- * закреплённая панель остаётся развёрнутой всегда, пока не открепят.</p>
+ * и разворачивается обратно кнопкой в заголовке ("свернуть") — чисто
+ * вручную, без автоматики: раньше была идея сворачивать её автоматически
+ * при переходе к результатам (плюс кнопка "закрепить", чтобы это
+ * отключить), но на практике не давала предсказуемого результата —
+ * оставлено только ручное управление.</p>
  */
 public class Dashboard extends VBox {
     
@@ -38,11 +39,9 @@ public class Dashboard extends VBox {
     private final VBox collapsedRail;
     private final VBox expandedContent;
     private final VBox historyList;
-    private final Label pinButton;
     private WorkspaceContainer workspace;
     
     private boolean expanded = true;
-    private boolean pinned = false;
     
     public Dashboard() {
         getStyleClass().add("dashboard");
@@ -60,15 +59,10 @@ public class Dashboard extends VBox {
         collapsedRail.setPadding(new Insets(12, 0, 0, 0));
         collapsedRail.getStyleClass().add("dashboard-rail");
         
-        // --- Развёрнутое состояние: заголовок с кнопками + история ---
+        // --- Развёрнутое состояние: заголовок с кнопкой + история ---
         Label historyTitle = new Label("История поиска");
         historyTitle.getStyleClass().add("dashboard-section-title");
         HBox.setHgrow(historyTitle, Priority.ALWAYS);
-        
-        pinButton = new Label("📌");
-        pinButton.getStyleClass().add("dashboard-header-button");
-        Tooltip.install(pinButton, new Tooltip("Закрепить (не сворачивать автоматически)"));
-        pinButton.setOnMouseClicked(e -> togglePin());
         
         Label collapseButton = new Label("◂");
         collapseButton.getStyleClass().add("dashboard-header-button");
@@ -78,7 +72,7 @@ public class Dashboard extends VBox {
         Region titleSpacer = new Region();
         HBox.setHgrow(titleSpacer, Priority.ALWAYS);
         
-        HBox header = new HBox(4, historyTitle, pinButton, collapseButton);
+        HBox header = new HBox(4, historyTitle, collapseButton);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(12, 12, 8, 16));
         
@@ -115,17 +109,6 @@ public class Dashboard extends VBox {
         // вернётся что-то, зависящее от авторизации.
     }
     
-    /**
-     * Вызывается при переходе на экран результатов анализа — если панель
-     * не закреплена, сворачивает её автоматически, освобождая место под
-     * результаты. Закреплённая панель остаётся как есть.
-     */
-    public void onResultsShown() {
-        if (!pinned && expanded) {
-            collapse();
-        }
-    }
-    
     private void expand() {
         expanded = true;
         applyState();
@@ -134,14 +117,6 @@ public class Dashboard extends VBox {
     private void collapse() {
         expanded = false;
         applyState();
-    }
-    
-    private void togglePin() {
-        pinned = !pinned;
-        pinButton.setText(pinned ? "📍" : "📌");
-        Tooltip.install(pinButton, new Tooltip(pinned
-                ? "Открепить (снова сворачивать автоматически)"
-                : "Закрепить (не сворачивать автоматически)"));
     }
     
     private void applyState() {

@@ -11,6 +11,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -29,6 +30,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Results view - shows aggregated analysis totals and a per-institution breakdown.
@@ -202,6 +204,11 @@ public class ResultsView extends VBox implements WorkspaceView {
             return;
         }
         
+        Boolean onlyVisible = askExportScope();
+        if (onlyVisible == null) {
+            return; // пользователь нажал "Отмена"
+        }
+        
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Сохранить отчёт");
         fileChooser.getExtensionFilters().add(
@@ -216,12 +223,47 @@ public class ResultsView extends VBox implements WorkspaceView {
             return;
         }
         
+        Set<String> visibleStats = onlyVisible
+                ? combinedTotals().keySet().stream()
+                        .filter(statPrefs::isVisible)
+                        .collect(java.util.stream.Collectors.toSet())
+                : null;
+        
         try {
-            ExportService.exportToExcel(currentResult, file);
+            ExportService.exportToExcel(currentResult, file, visibleStats);
             showInfoAlert("Экспорт завершён", "Файл сохранён:\n" + file.getAbsolutePath());
         } catch (IOException e) {
             showInfoAlert("Ошибка экспорта", "Не удалось сохранить файл:\n" + e.getMessage());
         }
+    }
+    
+    /**
+     * Спрашивает перед экспортом: выгружать все посчитанные показатели
+     * (даже скрытые галочками на экране) или только отмеченные сейчас.
+     *
+     * @return {@code true} — только отмеченные, {@code false} — все,
+     * {@code null} — пользователь нажал "Отмена" (экспорт не выполняется)
+     */
+    private Boolean askExportScope() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Экспорт в Excel");
+        alert.setHeaderText(null);
+        alert.setContentText("Какие показатели включить в файл?");
+        
+        ButtonType allButton = new ButtonType("Все показатели");
+        ButtonType visibleButton = new ButtonType("Только отмеченные галочками");
+        alert.getButtonTypes().setAll(allButton, visibleButton, ButtonType.CANCEL);
+        
+        return alert.showAndWait()
+                .map(button -> {
+                    if (button == allButton) {
+                        return Boolean.FALSE;
+                    } else if (button == visibleButton) {
+                        return Boolean.TRUE;
+                    }
+                    return null;
+                })
+                .orElse(null);
     }
     
     private void showInfoAlert(String title, String message) {

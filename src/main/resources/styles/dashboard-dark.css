@@ -216,6 +216,14 @@
     -fx-text-fill: #8B949E;
 }
 
+.dark-theme .loading-progress-bar {
+    -fx-accent: #58A6FF;
+}
+
+.dark-theme .loading-eta-label {
+    -fx-text-fill: #8B949E;
+}
+
 .dark-theme .loading-cancel-button {
     -fx-border-color: #30363D;
     -fx-text-fill: #8B949E;

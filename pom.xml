@@ -6,7 +6,7 @@
 
     <groupId>com.rmc</groupId>
     <artifactId>rmc-framework</artifactId>
-    <version>0.1.11</version>
+    <version>0.1.12</version>
     <packaging>jar</packaging>
 
     <name>RMC Framework</name>

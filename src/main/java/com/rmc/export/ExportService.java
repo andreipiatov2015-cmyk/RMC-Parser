@@ -46,13 +46,24 @@ public class ExportService {
     }
     
     public static void exportToExcel(AnalysisResult result, File file) throws IOException {
+        exportToExcel(result, file, null);
+    }
+    
+    /**
+     * @param visibleStats если не {@code null} — в файл попадут только
+     *                     показатели с названиями из этого набора (то,
+     *                     что отмечено галочками на экране результатов);
+     *                     {@code null} означает "экспортировать всё",
+     *                     независимо от того, что сейчас показано на экране
+     */
+    public static void exportToExcel(AnalysisResult result, File file, Set<String> visibleStats) throws IOException {
         logger.info("Экспорт результатов анализа в Excel: {}", file.getAbsolutePath());
         
         try (Workbook workbook = new XSSFWorkbook()) {
             CellStyle headerStyle = createHeaderStyle(workbook);
             
-            writeSummarySheet(workbook, headerStyle, result);
-            writeInstitutionsSheet(workbook, headerStyle, result);
+            writeSummarySheet(workbook, headerStyle, result, visibleStats);
+            writeInstitutionsSheet(workbook, headerStyle, result, visibleStats);
             
             try (FileOutputStream out = new FileOutputStream(file)) {
                 workbook.write(out);
@@ -62,7 +73,8 @@ public class ExportService {
         logger.info("Экспорт завершён: {}", file.getAbsolutePath());
     }
     
-    private static void writeSummarySheet(Workbook workbook, CellStyle headerStyle, AnalysisResult result) {
+    private static void writeSummarySheet(Workbook workbook, CellStyle headerStyle, AnalysisResult result,
+                                           Set<String> visibleStats) {
         Sheet sheet = workbook.createSheet("Итого");
         int rowIdx = 0;
         
@@ -81,6 +93,9 @@ public class ExportService {
         Row filteredHeader = sheet.createRow(rowIdx++);
         setCell(filteredHeader, 0, "— По фильтру —", headerStyle);
         for (Map.Entry<String, Integer> entry : result.getFilteredTotals().entrySet()) {
+            if (visibleStats != null && !visibleStats.contains(entry.getKey())) {
+                continue;
+            }
             Row row = sheet.createRow(rowIdx++);
             setCell(row, 0, entry.getKey());
             setCell(row, 1, entry.getValue());
@@ -89,6 +104,9 @@ public class ExportService {
         Row overallHeader = sheet.createRow(rowIdx++);
         setCell(overallHeader, 0, "— По учреждению целиком —", headerStyle);
         for (Map.Entry<String, Integer> entry : result.getOverallTotals().entrySet()) {
+            if (visibleStats != null && !visibleStats.contains(entry.getKey())) {
+                continue;
+            }
             Row row = sheet.createRow(rowIdx++);
             setCell(row, 0, entry.getKey());
             setCell(row, 1, entry.getValue());
@@ -97,7 +115,8 @@ public class ExportService {
         autoSizeColumns(sheet, 2);
     }
     
-    private static void writeInstitutionsSheet(Workbook workbook, CellStyle headerStyle, AnalysisResult result) {
+    private static void writeInstitutionsSheet(Workbook workbook, CellStyle headerStyle, AnalysisResult result,
+                                                Set<String> visibleStats) {
         Sheet sheet = workbook.createSheet("По учреждениям");
         CreationHelper creationHelper = workbook.getCreationHelper();
         CellStyle linkStyle = createLinkStyle(workbook);
@@ -112,6 +131,10 @@ public class ExportService {
         for (InstitutionAnalysis institution : result.getInstitutions()) {
             filteredColumns.addAll(institution.getFilteredStats().keySet());
             overallColumns.addAll(institution.getOverallStats().keySet());
+        }
+        if (visibleStats != null) {
+            filteredColumns.retainAll(visibleStats);
+            overallColumns.retainAll(visibleStats);
         }
         List<String> filtered = new ArrayList<>(filteredColumns);
         List<String> overall = new ArrayList<>(overallColumns);
