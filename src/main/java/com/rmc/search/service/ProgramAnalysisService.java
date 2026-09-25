@@ -8,11 +8,13 @@ import com.rmc.parser.model.Organization;
 import com.rmc.parser.model.Program;
 import com.rmc.search.model.AnalysisResult;
 import com.rmc.search.model.InstitutionAnalysis;
+import com.rmc.search.model.ProgramAnalysis;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -94,7 +96,7 @@ public class ProgramAnalysisService {
         
         while (nextRelativeUrl != null && pageCount < MAX_PAGES) {
             if (isCancelled.getAsBoolean()) {
-                return cancelledResult(allPrograms.size(), List.of());
+                return cancelledResult(allPrograms.size(), List.of(), List.of());
             }
             
             pageCount++;
@@ -144,6 +146,7 @@ public class ProgramAnalysisService {
         logger.info(LOG_INSTITUTIONS_TOTAL, uniqueOrganizations.size());
         
         List<InstitutionAnalysis> institutions = new ArrayList<>();
+        List<ProgramAnalysis> allProgramAnalyses = new ArrayList<>();
         Map<String, Integer> filteredTotals = new LinkedHashMap<>();
         Map<String, Integer> overallTotals = new LinkedHashMap<>();
         
@@ -151,7 +154,7 @@ public class ProgramAnalysisService {
         int total = uniqueOrganizations.size();
         for (Organization org : uniqueOrganizations.values()) {
             if (isCancelled.getAsBoolean()) {
-                return cancelledResult(allPrograms.size(), institutions);
+                return cancelledResult(allPrograms.size(), institutions, allProgramAnalyses);
             }
             
             index++;
@@ -160,7 +163,8 @@ public class ProgramAnalysisService {
             
             List<Program> orgPrograms = programsByOrgId.getOrDefault(
                     org.getId().orElse(""), List.of());
-            InstitutionAnalysis analysis = analyzeInstitution(org, orgPrograms, listener, isCancelled, index, total);
+            InstitutionAnalysis analysis = analyzeInstitution(org, orgPrograms, listener, isCancelled,
+                    index, total, allProgramAnalyses);
             institutions.add(analysis);
             
             if (analysis.isSuccess()) {
@@ -180,6 +184,7 @@ public class ProgramAnalysisService {
                 .filteredTotals(filteredTotals)
                 .overallTotals(overallTotals)
                 .institutions(institutions)
+                .programs(allProgramAnalyses)
                 .build();
     }
     
@@ -188,7 +193,8 @@ public class ProgramAnalysisService {
      * помечен отдельным флагом (не как ошибка), с суммами по тому, что
      * успело обработаться к моменту отмены.
      */
-    private AnalysisResult cancelledResult(int totalPrograms, List<InstitutionAnalysis> institutionsSoFar) {
+    private AnalysisResult cancelledResult(int totalPrograms, List<InstitutionAnalysis> institutionsSoFar,
+                                            List<ProgramAnalysis> programsSoFar) {
         Map<String, Integer> filteredTotals = new LinkedHashMap<>();
         Map<String, Integer> overallTotals = new LinkedHashMap<>();
         for (InstitutionAnalysis institution : institutionsSoFar) {
@@ -212,6 +218,7 @@ public class ProgramAnalysisService {
                 .filteredTotals(filteredTotals)
                 .overallTotals(overallTotals)
                 .institutions(institutionsSoFar)
+                .programs(programsSoFar)
                 .build();
     }
     
@@ -231,7 +238,8 @@ public class ProgramAnalysisService {
     private InstitutionAnalysis analyzeInstitution(Organization org, List<Program> orgPrograms,
                                                      ProgressListener listener,
                                                      java.util.function.BooleanSupplier isCancelled,
-                                                     int index, int total) {
+                                                     int index, int total,
+                                                     List<ProgramAnalysis> programAccumulator) {
         String orgId = org.getId().orElse("");
         String orgName = org.getName();
         String orgRelativeUrl = org.getUrl().orElse(null);
@@ -255,27 +263,52 @@ public class ProgramAnalysisService {
             }
         }
         
-        // 2) Показатели только по отфильтрованным программам этого учреждения.
+        // 2) Показатели только по отфильтрованным программам этого учреждения
+        //    — и заодно разбивка по каждой программе отдельно (для раздела
+        //    "По программам"), и эвристическая оценка бюджетных/платных по
+        //    тексту цены на карточке (см. PRICE_BUDGET_COUNT_LABEL/
+        //    PRICE_PAID_COUNT_LABEL — это НЕ официальный показатель сайта).
         Map<String, Integer> filteredStats = new LinkedHashMap<>();
         int failedPrograms = 0;
+        int budgetCount = 0;
+        int paidCount = 0;
         
         for (Program program : orgPrograms) {
             if (isCancelled.getAsBoolean()) {
                 break;
             }
             
+            String priceCategory = classifyPriceCategory(program);
+            if ("Бюджетная".equals(priceCategory)) {
+                budgetCount++;
+            } else if ("Платная".equals(priceCategory)) {
+                paidCount++;
+            }
+            
             String programRelativeUrl = program.getUrl().orElse(null);
+            ProgramAnalysis.Builder programBuilder = ProgramAnalysis.builder()
+                    .programId(program.getId())
+                    .programTitle(program.getTitle())
+                    .organizationName(orgName)
+                    .organizationId(orgId)
+                    .priceCategoryEstimate(priceCategory);
+            
             if (programRelativeUrl == null) {
                 failedPrograms++;
+                programAccumulator.add(programBuilder.success(false)
+                        .errorMessage("У программы не указана ссылка на страницу").build());
                 continue;
             }
             
             String programFullUrl = resolveUrl(programRelativeUrl);
+            programBuilder.programUrl(programFullUrl);
             SearchResult programResult = searchService.search(programFullUrl);
             
             if (!programResult.isSuccess()) {
                 logger.warn(LOG_PROGRAM_FETCH_ERROR, programFullUrl, programResult.getErrorMessage().orElse(""));
                 failedPrograms++;
+                programAccumulator.add(programBuilder.success(false)
+                        .errorMessage("Не удалось загрузить страницу программы").build());
                 continue;
             }
             
@@ -283,12 +316,19 @@ public class ProgramAnalysisService {
             if (!detailResult.isSuccess()) {
                 logger.warn(LOG_PROGRAM_PARSE_ERROR, programFullUrl, detailResult.getErrorMessage().orElse(""));
                 failedPrograms++;
+                programAccumulator.add(programBuilder.success(false)
+                        .errorMessage("Не удалось разобрать страницу программы").build());
                 continue;
             }
             
             for (Map.Entry<String, Integer> entry : detailResult.getStats().entrySet()) {
                 filteredStats.merge(entry.getKey(), entry.getValue(), Integer::sum);
             }
+            
+            programAccumulator.add(programBuilder
+                    .filteredStats(detailResult.getStats())
+                    .success(true)
+                    .build());
         }
         
         // Синтетический показатель: сколько программ этого учреждения
@@ -296,6 +336,12 @@ public class ProgramAnalysisService {
         // страниц получить не удалось (сам список программ у нас уже есть).
         if (!orgPrograms.isEmpty()) {
             filteredStats.put(InstitutionAnalysis.FILTERED_PROGRAM_COUNT_LABEL, orgPrograms.size());
+        }
+        if (budgetCount > 0) {
+            filteredStats.put(InstitutionAnalysis.PRICE_BUDGET_COUNT_LABEL, budgetCount);
+        }
+        if (paidCount > 0) {
+            filteredStats.put(InstitutionAnalysis.PRICE_PAID_COUNT_LABEL, paidCount);
         }
         
         if (failedPrograms > 0) {
@@ -320,6 +366,31 @@ public class ProgramAnalysisService {
         }
         
         return resultBuilder.build();
+    }
+    
+    /**
+     * Грубая эвристическая оценка "бюджетная или платная программа" по
+     * тексту цены на карточке программы в списке ({@link Program#getPrice()}).
+     * Официального разделения на странице отдельной программы нет — это
+     * прикидка, а не данные с сайта, поэтому и подписи показателей везде
+     * помечены "(оценка по цене)".
+     *
+     * @return "Бюджетная", "Платная" или {@code null}, если по тексту
+     * цены классифицировать не удалось
+     */
+    private String classifyPriceCategory(Program program) {
+        String price = program.getPrice().orElse(null);
+        if (price == null || price.isBlank()) {
+            return null;
+        }
+        String normalized = price.toLowerCase(Locale.ROOT);
+        if (normalized.contains("бесплат")) {
+            return "Бюджетная";
+        }
+        if (normalized.matches(".*[1-9].*")) {
+            return "Платная";
+        }
+        return null;
     }
     
     private String resolveUrl(String hrefOrUrl) {

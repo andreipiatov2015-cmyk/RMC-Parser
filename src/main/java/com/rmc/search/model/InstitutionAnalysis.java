@@ -33,6 +33,17 @@ public class InstitutionAnalysis {
      */
     public static final String FILTERED_PROGRAM_COUNT_LABEL = "Программ по фильтру";
     
+    /**
+     * Эвристическая оценка количества бюджетных/платных программ среди
+     * отфильтрованных — НЕ официальный показатель с сайта (на странице
+     * отдельной программы такого разделения просто нет), а грубая
+     * прикидка по тексту цены на карточке программы в списке. Может
+     * ошибаться на нестандартно оформленных карточках — отсюда пометка
+     * "(оценка по цене)" прямо в названии.
+     */
+    public static final String PRICE_BUDGET_COUNT_LABEL = "Программ бюджетных (оценка по цене)";
+    public static final String PRICE_PAID_COUNT_LABEL = "Программ платных (оценка по цене)";
+    
     private final String organizationId;
     private final String organizationName;
     private final String organizationUrl;

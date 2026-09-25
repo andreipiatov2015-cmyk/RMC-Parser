@@ -263,6 +263,25 @@
     -fx-border-color: #30363D;
 }
 
+/* ========== Results: разделённая область ========== */
+.dark-theme .results-split-pane {
+    -fx-background-color: #0D1117;
+}
+
+.dark-theme .results-split-toggle-row {
+    -fx-background-color: rgba(22, 27, 34, 0.92);
+    -fx-border-color: #30363D;
+}
+
+.dark-theme .results-split-toggle-button {
+    -fx-text-fill: #8B949E;
+}
+
+.dark-theme .results-split-toggle-button:hover {
+    -fx-text-fill: #58A6FF;
+    -fx-background-color: #21262D;
+}
+
 .dark-theme .donut-chart {
     -fx-background-color: transparent;
 }

@@ -21,6 +21,7 @@ public class AnalysisResult {
     private final Map<String, Integer> filteredTotals;
     private final Map<String, Integer> overallTotals;
     private final List<InstitutionAnalysis> institutions;
+    private final List<ProgramAnalysis> programs;
     private final String errorMessage;
     
     private AnalysisResult(Builder builder) {
@@ -31,6 +32,7 @@ public class AnalysisResult {
         this.filteredTotals = Map.copyOf(builder.filteredTotals);
         this.overallTotals = Map.copyOf(builder.overallTotals);
         this.institutions = List.copyOf(builder.institutions);
+        this.programs = List.copyOf(builder.programs);
         this.errorMessage = builder.errorMessage;
     }
     
@@ -78,6 +80,15 @@ public class AnalysisResult {
         return institutions;
     }
     
+    /**
+     * @return разбивка по каждой отдельной программе, прошедшей фильтр
+     * (раздел "По программам" в результатах) — параллельно списку
+     * учреждений, но на уровне одной программы, а не всего учреждения
+     */
+    public List<ProgramAnalysis> getPrograms() {
+        return programs;
+    }
+    
     public Optional<String> getErrorMessage() {
         return Optional.ofNullable(errorMessage);
     }
@@ -91,6 +102,7 @@ public class AnalysisResult {
         private Map<String, Integer> filteredTotals = new LinkedHashMap<>();
         private Map<String, Integer> overallTotals = new LinkedHashMap<>();
         private List<InstitutionAnalysis> institutions = new ArrayList<>();
+        private List<ProgramAnalysis> programs = new ArrayList<>();
         private String errorMessage;
         
         public Builder success(boolean success) {
@@ -125,6 +137,11 @@ public class AnalysisResult {
         
         public Builder institutions(List<InstitutionAnalysis> institutions) {
             this.institutions = new ArrayList<>(institutions);
+            return this;
+        }
+        
+        public Builder programs(List<ProgramAnalysis> programs) {
+            this.programs = new ArrayList<>(programs);
             return this;
         }
         
