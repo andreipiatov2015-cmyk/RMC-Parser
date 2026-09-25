@@ -17,6 +17,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * java -cp target/classes com.rmc.corpus.FullSiteCrawlRunner &lt;логин&gt; &lt;пароль&gt; [maxDepth] [maxPages]
  * </pre>
  *
+ * <p>Обход возобновляемый — запускать эту же команду повторно (с теми же
+ * параметрами) полностью безопасно: она продолжит с того места, где
+ * остановилась в прошлый раз (по сохранённому состоянию в {@code
+ * data/raw/site/_crawl_state.tsv}), не перекачивая уже посещённые
+ * страницы заново. {@code maxPages} — это не общий потолок за всю
+ * историю обхода, а "сколько новых страниц добрать за этот запуск".</p>
+ *
  * <p>Раздел программ ({@code /programs/}, {@code /program/}, {@code /course/})
  * по умолчанию сохраняется, если встретится, но не разворачивается —
  * его лучше собирать отдельно через {@link CorpusCollectionRunner},
@@ -31,7 +38,9 @@ public final class FullSiteCrawlRunner {
         if (args.length < 2) {
             System.out.println("Использование: FullSiteCrawlRunner <логин> <пароль> [maxDepth] [maxPages]");
             System.out.println("  maxDepth — сколько уровней ссылок от главной обходить (по умолчанию 1)");
-            System.out.println("  maxPages — общий потолок страниц (по умолчанию 500)");
+            System.out.println("  maxPages — сколько НОВЫХ страниц добрать за этот запуск (по умолчанию 500)");
+            System.out.println("Команду можно запускать повторно с теми же параметрами — обход продолжится");
+            System.out.println("с того места, где остановился в прошлый раз, не перекачивая старое заново.");
             return;
         }
 
@@ -74,9 +83,10 @@ public final class FullSiteCrawlRunner {
                                 + ", сохранено: " + savedCount + "] " + message),
                 cancelled::get);
 
-        System.out.println("Готово. Сохранено страниц: " + saved);
+        System.out.println("Готово. Новых файлов сохранено в этом запуске: " + saved);
         System.out.println("Файлы лежат в data/raw/site, карта сайта — в data/raw/site/_sitemap.txt");
         System.out.println("Откройте _sitemap.txt, чтобы увидеть найденную структуру, и решите, какой раздел собирать дальше.");
+        System.out.println("Чтобы добрать ещё страниц — запустите эту же команду ещё раз, обход продолжится сам.");
     }
 }
 

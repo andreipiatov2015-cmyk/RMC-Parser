@@ -41,9 +41,19 @@ import java.util.function.BooleanSupplier;
  * они (глубина 2), и так далее. {@link Builder#maxDepth} позволяет
  * остановиться на нужном уровне — например, сначала пройти только
  * главное меню (maxDepth=1), посмотреть, что нашлось, и только потом
- * увеличивать глубину. Обход идемпотентен (уже сохранённые страницы не
- * перекачиваются), поэтому повторный запуск с большей глубиной просто
- * доберёт новые страницы, не переделывая старое.</p>
+ * увеличивать глубину.</p>
+ *
+ * <p>Обход возобновляемый: очередь необойдённых ссылок, список уже
+ * посещённых страниц и карта сайта сохраняются в служебный файл
+ * {@code data/raw/site/_crawl_state.tsv} после каждого запуска (в том
+ * числе при остановке пользователем). Следующий запуск с тем же {@code
+ * outputRoot} продолжает ровно с того места, где остановился прошлый —
+ * уже посещённые страницы не запрашиваются у сайта повторно (а не
+ * только "не перезаписываются на диск", как было раньше). При этом
+ * {@link Builder#maxPages} означает не общий потолок за всю историю
+ * обхода, а "сколько НОВЫХ страниц добрать за этот запуск" — команду
+ * можно просто повторять с теми же параметрами, чтобы обход тёк
+ * порциями.</p>
  *
  * <p>{@link Builder#doNotExpand} — разделы, которые нужно увидеть и
  * сохранить, но не разворачивать вглубь (типичный случай — раздел
@@ -104,42 +114,63 @@ public class SiteCrawler {
     }
 
     /**
-     * Запускает обход, начиная с корня сайта.
+     * Запускает (или продолжает, если есть сохранённое состояние с
+     * прошлого раза) обход, начиная с корня сайта.
      *
-     * @return количество сохранённых страниц
+     * @return количество страниц, реально сохранённых на диск В ЭТОМ запуске
      */
     public int crawl(ProgressListener listener, BooleanSupplier isCancelled) {
         ensureDir(outputDir);
+        Path stateFile = outputDir.resolve("_crawl_state.tsv");
+        boolean resuming = Files.exists(stateFile);
 
-        Set<String> visited = new LinkedHashSet<>();
-        Map<String, Integer> depthOf = new LinkedHashMap<>();
-        ArrayDeque<String> queue = new ArrayDeque<>();
-        queue.add(baseUrl);
-        depthOf.put(baseUrl, 0);
+        Set<String> visited;
+        Map<String, Integer> depthOf;
+        ArrayDeque<String> queue;
+        List<String[]> sitemapEntries;
+        int index;
 
-        List<String[]> sitemapEntries = new ArrayList<>(); // [depth, url, title]
-        int saved = 0;
-        int index = 0;
+        if (resuming) {
+            CrawlState state = loadState(stateFile);
+            visited = state.visited;
+            depthOf = state.depthOf;
+            queue = state.queue;
+            sitemapEntries = state.sitemapEntries;
+            index = state.index;
+            logger.info("Продолжаем ранее начатый обход: уже посещено {} страниц, в очереди {}",
+                    visited.size(), queue.size());
+        } else {
+            visited = new LinkedHashSet<>();
+            depthOf = new LinkedHashMap<>();
+            queue = new ArrayDeque<>();
+            sitemapEntries = new ArrayList<>();
+            queue.add(baseUrl);
+            depthOf.put(baseUrl, 0);
+            index = 0;
+        }
 
-        while (!queue.isEmpty() && visited.size() < maxPages) {
+        int savedThisRun = 0;
+        int newlyVisitedThisRun = 0;
+
+        while (!queue.isEmpty() && newlyVisitedThisRun < maxPages) {
             if (isCancelled != null && isCancelled.getAsBoolean()) {
-                logger.info("Обход остановлен пользователем на {} страницах", visited.size());
+                logger.info("Обход остановлен пользователем. Всего накоплено {} посещённых страниц", visited.size());
                 break;
             }
 
             String url = queue.poll();
-            int depth = depthOf.getOrDefault(url, 0);
-
             if (url == null || visited.contains(url)) {
                 continue;
             }
+            int depth = depthOf.getOrDefault(url, 0);
             visited.add(url);
             index++;
+            newlyVisitedThisRun++;
 
             Path file = outputDir.resolve(safeFileName(url, index) + ".txt");
             boolean alreadySaved = Files.exists(file);
 
-            report(listener, "Загрузка (уровень " + depth + "): " + url, depth, visited.size(), queue.size(), saved);
+            report(listener, "Загрузка (уровень " + depth + "): " + url, depth, visited.size(), queue.size(), savedThisRun);
 
             String html;
             try {
@@ -168,7 +199,7 @@ public class SiteCrawler {
                         + "---" + System.lineSeparator() + text;
                 try {
                     Files.writeString(file, content, StandardCharsets.UTF_8);
-                    saved++;
+                    savedThisRun++;
                 } catch (IOException e) {
                     logger.warn("Не удалось сохранить {}: {}", url, e.getMessage());
                 }
@@ -199,10 +230,92 @@ public class SiteCrawler {
             sleepPolitely();
         }
 
+        saveState(stateFile, visited, depthOf, queue, sitemapEntries, index);
         writeSitemap(sitemapEntries);
 
-        logger.info("Обход завершён: посещено {} страниц, сохранено {}", visited.size(), saved);
-        return saved;
+        String doneNote = queue.isEmpty() ? " Очередь пуста — обход этого уровня завершён полностью." : "";
+        logger.info("Обход за этот запуск закончен: новых страниц посещено {}, сохранено файлов {}, всего накоплено {}.{}",
+                newlyVisitedThisRun, savedThisRun, visited.size(), doneNote);
+        return savedThisRun;
+    }
+    
+    /**
+     * Состояние обхода, которое переживает перезапуск процесса.
+     */
+    private static class CrawlState {
+        Set<String> visited = new LinkedHashSet<>();
+        Map<String, Integer> depthOf = new LinkedHashMap<>();
+        ArrayDeque<String> queue = new ArrayDeque<>();
+        List<String[]> sitemapEntries = new ArrayList<>();
+        int index = 0;
+    }
+    
+    private CrawlState loadState(Path stateFile) {
+        CrawlState state = new CrawlState();
+        try {
+            for (String line : Files.readAllLines(stateFile, StandardCharsets.UTF_8)) {
+                if (line.isEmpty()) {
+                    continue;
+                }
+                String[] parts = line.split("\t", 4);
+                switch (parts[0]) {
+                    case "M" -> {
+                        for (String kv : parts[1].split(";")) {
+                            String[] pair = kv.split("=", 2);
+                            if (pair.length == 2 && pair[0].equals("index")) {
+                                state.index = Integer.parseInt(pair[1]);
+                            }
+                        }
+                    }
+                    case "V" -> {
+                        int depth = Integer.parseInt(parts[1]);
+                        String url = parts[2];
+                        state.depthOf.put(url, depth);
+                        state.visited.add(url);
+                    }
+                    case "Q" -> {
+                        int depth = Integer.parseInt(parts[1]);
+                        String url = parts[2];
+                        state.depthOf.put(url, depth);
+                        state.queue.add(url);
+                    }
+                    case "S" -> {
+                        if (parts.length >= 4) {
+                            state.sitemapEntries.add(new String[]{parts[1], parts[2], parts[3]});
+                        }
+                    }
+                    default -> {
+                        // неизвестная строка — пропускаем, не ломаем весь файл из-за неё
+                    }
+                }
+            }
+        } catch (IOException e) {
+            logger.warn("Не удалось прочитать сохранённое состояние обхода {}: {} — начинаем заново", stateFile, e.getMessage());
+            return new CrawlState();
+        }
+        return state;
+    }
+    
+    private void saveState(Path stateFile, Set<String> visited, Map<String, Integer> depthOf,
+                            ArrayDeque<String> queue, List<String[]> sitemapEntries, int index) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("M\tindex=").append(index).append('\n');
+        for (String url : visited) {
+            sb.append("V\t").append(depthOf.getOrDefault(url, 0)).append('\t').append(url).append('\n');
+        }
+        for (String url : queue) {
+            sb.append("Q\t").append(depthOf.getOrDefault(url, 0)).append('\t').append(url).append('\n');
+        }
+        for (String[] entry : sitemapEntries) {
+            String title = entry[2].replace("\t", " ").replace("\n", " ").replace("\r", " ");
+            sb.append("S\t").append(entry[0]).append('\t').append(entry[1]).append('\t').append(title).append('\n');
+        }
+        try {
+            Files.writeString(stateFile, sb.toString(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            logger.warn("Не удалось сохранить состояние обхода {}: {} — при следующем запуске обход начнётся заново",
+                    stateFile, e.getMessage());
+        }
     }
 
     private boolean matchesAny(String url, Set<String> substrings) {
