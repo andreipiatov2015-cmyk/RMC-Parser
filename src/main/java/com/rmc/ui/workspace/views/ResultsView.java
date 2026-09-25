@@ -31,7 +31,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
@@ -184,13 +184,6 @@ public class ResultsView extends VBox implements WorkspaceView {
         splitContainer.getChildren().addAll(institutionsPane, programsPane);
         VBox.setVgrow(splitContainer, Priority.ALWAYS);
         
-        StackPane splitArea = new StackPane(splitContainer);
-        HBox toggleRow = buildSplitToggleControls();
-        StackPane.setAlignment(toggleRow, Pos.BOTTOM_RIGHT);
-        StackPane.setMargin(toggleRow, new Insets(0, 10, 10, 0));
-        splitArea.getChildren().add(toggleRow);
-        VBox.setVgrow(splitArea, Priority.ALWAYS);
-        
         // Back + export buttons
         backButton = new ActionButton("Назад к фильтрам", ActionButton.Style.SECONDARY);
         backButton.setGraphic(TablerIcon.of(TablerIcons.ARROW_LEFT, 14));
@@ -201,11 +194,19 @@ public class ResultsView extends VBox implements WorkspaceView {
         exportButton.setOnAction(e -> onExport());
         exportButton.setDisable(true);
         
-        HBox buttonsRow = new HBox();
-        buttonsRow.setSpacing(12);
-        buttonsRow.getChildren().addAll(backButton, exportButton);
+        // Переключатель "какую область показывать" — в том же ряду, что и
+        // кнопки "Назад"/"Экспорт", справа от них (их центры на одном
+        // уровне), а не поверх самой области с разбивкой.
+        HBox toggleRow = buildSplitToggleControls();
+        Region buttonsSpacer = new Region();
+        HBox.setHgrow(buttonsSpacer, Priority.ALWAYS);
         
-        getChildren().addAll(title, topSection, splitArea, buttonsRow);
+        HBox buttonsRow = new HBox();
+        buttonsRow.setAlignment(Pos.CENTER_LEFT);
+        buttonsRow.setSpacing(12);
+        buttonsRow.getChildren().addAll(backButton, exportButton, buttonsSpacer, toggleRow);
+        
+        getChildren().addAll(title, topSection, splitContainer, buttonsRow);
         
         showPlaceholder();
     }
@@ -227,7 +228,7 @@ public class ResultsView extends VBox implements WorkspaceView {
     }
     
     private HBox buildSplitToggleControls() {
-        Label btnLeft = splitToggleButton(TablerIcons.CHEVRON_LEFT, 14,
+        Label btnLeft = splitToggleButton(TablerIcons.CHEVRON_LEFT, 18,
                 "Только «По учреждениям»", () -> animateSplitTo(SplitMode.INSTITUTIONS_ONLY));
         
         Label btnSplit = new Label("‖");
@@ -235,13 +236,12 @@ public class ResultsView extends VBox implements WorkspaceView {
         Tooltip.install(btnSplit, new Tooltip("Показать обе области поровну"));
         btnSplit.setOnMouseClicked(e -> animateSplitTo(SplitMode.SPLIT));
         
-        Label btnRight = splitToggleButton(TablerIcons.CHEVRON_RIGHT, 14,
+        Label btnRight = splitToggleButton(TablerIcons.CHEVRON_RIGHT, 18,
                 "Только «По программам»", () -> animateSplitTo(SplitMode.PROGRAMS_ONLY));
         
-        HBox row = new HBox(2, btnLeft, btnSplit, btnRight);
+        HBox row = new HBox(6, btnLeft, btnSplit, btnRight);
         row.getStyleClass().add("results-split-toggle-row");
         row.setAlignment(Pos.CENTER);
-        row.setPadding(new Insets(4, 6, 4, 6));
         return row;
     }
     

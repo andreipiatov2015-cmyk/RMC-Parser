@@ -12,7 +12,7 @@ public class VersionService {
     private static final Logger logger = AppLogger.getLogger();
     
     // Single source of truth for application version
-    private static final String CURRENT_VERSION_STRING = "0.1.15";
+    private static final String CURRENT_VERSION_STRING = "0.1.16";
 
     private VersionService() {
         // Utility class
