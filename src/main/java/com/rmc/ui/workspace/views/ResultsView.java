@@ -112,24 +112,19 @@ public class ResultsView extends VBox implements WorkspaceView {
         summaryLabel = new Label();
         summaryLabel.getStyleClass().add("results-summary");
         
-        // Master-галочки — включают/выключают целиком группу показателей.
+        // Master-галочки — разовое действие "отметить/снять всё" в своей
+        // группе: пишут напрямую в те же точечные предпочтения, после чего
+        // точечные галочки остаются полностью обычными, кликабельными —
+        // сама master-галочка ничего не "запирает" и не хранит состояние.
         masterFilteredCheckBox = new CheckBox("Показывать: по фильтру");
         masterFilteredCheckBox.getStyleClass().add("filter-checkbox");
-        masterFilteredCheckBox.setSelected(statPrefs.isFilteredGroupVisible());
-        masterFilteredCheckBox.selectedProperty().addListener((obs, was, isNow) -> {
-            statPrefs.setFilteredGroupVisible(isNow);
-            rebuildStatsCheckboxes();
-            renderVisibleStats();
-        });
+        masterFilteredCheckBox.selectedProperty().addListener((obs, was, isNow) ->
+                applyGroupBulkVisibility(true, isNow));
         
         masterOverallCheckBox = new CheckBox("Показывать: общие данные по учреждению");
         masterOverallCheckBox.getStyleClass().add("filter-checkbox");
-        masterOverallCheckBox.setSelected(statPrefs.isOverallGroupVisible());
-        masterOverallCheckBox.selectedProperty().addListener((obs, was, isNow) -> {
-            statPrefs.setOverallGroupVisible(isNow);
-            rebuildStatsCheckboxes();
-            renderVisibleStats();
-        });
+        masterOverallCheckBox.selectedProperty().addListener((obs, was, isNow) ->
+                applyGroupBulkVisibility(false, isNow));
         
         HBox masterRow = new HBox(24, masterFilteredCheckBox, masterOverallCheckBox);
         masterRow.setAlignment(Pos.CENTER_LEFT);
@@ -317,32 +312,23 @@ public class ResultsView extends VBox implements WorkspaceView {
     }
     
     /**
-     * Видимость показателя из группы "по фильтру": видим, если включена
-     * master-галочка этой группы, ИЛИ отмечен точечно.
+     * Разовое массовое действие master-галочки: ставит/снимает
+     * предпочтение видимости у ВСЕХ показателей указанной группы сразу
+     * (по факту принадлежности к {@code currentResult}). Дальше точечные
+     * галочки — самые обычные, ничем не заблокированные.
      */
-    private boolean isFilteredStatVisible(String key) {
-        return statPrefs.isFilteredGroupVisible() || statPrefs.isVisible(key);
-    }
-    
-    /**
-     * То же самое для группы "по учреждению целиком".
-     */
-    private boolean isOverallStatVisible(String key) {
-        return statPrefs.isOverallGroupVisible() || statPrefs.isVisible(key);
-    }
-    
-    /**
-     * Общая проверка видимости, когда заранее не известно, из какой
-     * группы показатель (например, при экспорте) — определяет группу по
-     * фактической принадлежности в {@link #currentResult}.
-     */
-    private boolean isStatVisible(String key) {
+    private void applyGroupBulkVisibility(boolean filteredGroup, boolean visible) {
         if (currentResult == null) {
-            return false;
+            return;
         }
-        boolean inFiltered = currentResult.getFilteredTotals().containsKey(key);
-        boolean inOverall = currentResult.getOverallTotals().containsKey(key);
-        return (inFiltered && isFilteredStatVisible(key)) || (inOverall && isOverallStatVisible(key));
+        Set<String> keys = filteredGroup
+                ? currentResult.getFilteredTotals().keySet()
+                : currentResult.getOverallTotals().keySet();
+        for (String key : keys) {
+            statPrefs.setVisible(key, visible);
+        }
+        rebuildStatsCheckboxes();
+        renderVisibleStats();
     }
     
     private void rebuildStatsCheckboxes() {
@@ -351,22 +337,10 @@ public class ResultsView extends VBox implements WorkspaceView {
             return;
         }
         
-        Set<String> filteredKeys = currentResult.getFilteredTotals().keySet();
-        Set<String> overallKeys = currentResult.getOverallTotals().keySet();
-        
         for (String statName : combinedTotals().keySet()) {
-            boolean inFiltered = filteredKeys.contains(statName);
-            boolean inOverall = overallKeys.contains(statName);
-            // Пока включена master-галочка группы, точечная галочка ничего
-            // не решает для показателей ЭТОЙ группы — блокируем её и
-            // показываем отмеченной, чтобы это было видно, а не подразумевалось.
-            boolean forcedByGroup = (inFiltered && statPrefs.isFilteredGroupVisible())
-                    || (inOverall && statPrefs.isOverallGroupVisible());
-            
             CheckBox checkBox = new CheckBox(statName);
             checkBox.getStyleClass().add("filter-checkbox");
-            checkBox.setSelected(forcedByGroup || statPrefs.isVisible(statName));
-            checkBox.setDisable(forcedByGroup);
+            checkBox.setSelected(statPrefs.isVisible(statName));
             checkBox.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
                 statPrefs.setVisible(statName, isSelected);
                 renderVisibleStats();
@@ -382,12 +356,12 @@ public class ResultsView extends VBox implements WorkspaceView {
         
         totalsPane.getChildren().clear();
         for (Map.Entry<String, Integer> entry : currentResult.getFilteredTotals().entrySet()) {
-            if (isFilteredStatVisible(entry.getKey())) {
+            if (statPrefs.isVisible(entry.getKey())) {
                 totalsPane.getChildren().add(createStatCard(entry.getKey(), entry.getValue()));
             }
         }
         for (Map.Entry<String, Integer> entry : currentResult.getOverallTotals().entrySet()) {
-            if (isOverallStatVisible(entry.getKey())) {
+            if (statPrefs.isVisible(entry.getKey())) {
                 totalsPane.getChildren().add(createStatCard(entry.getKey(), entry.getValue()));
             }
         }
@@ -436,7 +410,7 @@ public class ResultsView extends VBox implements WorkspaceView {
         
         Set<String> visibleStats = onlyVisible
                 ? combinedTotals().keySet().stream()
-                        .filter(this::isStatVisible)
+                        .filter(statPrefs::isVisible)
                         .collect(java.util.stream.Collectors.toSet())
                 : null;
         
@@ -534,12 +508,12 @@ public class ResultsView extends VBox implements WorkspaceView {
         } else {
             StringBuilder statsLine = new StringBuilder();
             for (Map.Entry<String, Integer> entry : institution.getFilteredStats().entrySet()) {
-                if (isFilteredStatVisible(entry.getKey())) {
+                if (statPrefs.isVisible(entry.getKey())) {
                     appendStat(statsLine, entry);
                 }
             }
             for (Map.Entry<String, Integer> entry : institution.getOverallStats().entrySet()) {
-                if (isOverallStatVisible(entry.getKey())) {
+                if (statPrefs.isVisible(entry.getKey())) {
                     appendStat(statsLine, entry);
                 }
             }
@@ -587,7 +561,7 @@ public class ResultsView extends VBox implements WorkspaceView {
         
         StringBuilder statsLine = new StringBuilder();
         for (Map.Entry<String, Integer> entry : program.getFilteredStats().entrySet()) {
-            if (isFilteredStatVisible(entry.getKey())) {
+            if (statPrefs.isVisible(entry.getKey())) {
                 appendStat(statsLine, entry);
             }
         }

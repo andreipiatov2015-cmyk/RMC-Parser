@@ -23,8 +23,6 @@ public class StatDisplayPreferences {
     
     private static final Logger logger = AppLogger.getLogger();
     private static final String KEY_HIDDEN_STATS = "hiddenResultStats";
-    private static final String KEY_SHOW_FILTERED_GROUP = "showFilteredStatsGroup";
-    private static final String KEY_SHOW_OVERALL_GROUP = "showOverallStatsGroup";
     private static final String SEPARATOR = "\u001F"; // разделитель, который не встретится в названии показателя
     
     private final Preferences prefs;
@@ -60,36 +58,6 @@ public class StatDisplayPreferences {
             return;
         }
         prefs.put(KEY_HIDDEN_STATS, String.join(SEPARATOR, hidden));
-        flush();
-    }
-    
-    /**
-     * Групповой переключатель "Показывать по фильтру" — когда включён,
-     * показываются ВСЕ показатели из группы "по фильтру" целиком, поверх
-     * индивидуальных галочек (те остаются рабочими только для показателей
-     * из ДРУГОЙ, выключенной сейчас группы — способ точечно добавить
-     * что-то оттуда, не включая её целиком). По умолчанию включён — чтобы
-     * ничего не пропадало из вида на новой установке.
-     */
-    public boolean isFilteredGroupVisible() {
-        return prefs.getBoolean(KEY_SHOW_FILTERED_GROUP, true);
-    }
-    
-    public void setFilteredGroupVisible(boolean visible) {
-        prefs.putBoolean(KEY_SHOW_FILTERED_GROUP, visible);
-        flush();
-    }
-    
-    /**
-     * То же самое, что {@link #isFilteredGroupVisible()}, но для группы
-     * "по учреждению целиком".
-     */
-    public boolean isOverallGroupVisible() {
-        return prefs.getBoolean(KEY_SHOW_OVERALL_GROUP, true);
-    }
-    
-    public void setOverallGroupVisible(boolean visible) {
-        prefs.putBoolean(KEY_SHOW_OVERALL_GROUP, visible);
         flush();
     }
     
