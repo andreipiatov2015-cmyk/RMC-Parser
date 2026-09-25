@@ -2,6 +2,8 @@ package com.rmc.ui.dashboard;
 
 import com.rmc.history.SearchHistoryService;
 import com.rmc.history.model.SearchHistoryEntry;
+import com.rmc.ui.icons.TablerIcon;
+import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -49,7 +51,8 @@ public class Dashboard extends VBox {
         setPrefWidth(EXPANDED_WIDTH);
         
         // --- Свёрнутое состояние: одна кнопка "выдвинуть" ---
-        Label expandButton = new Label("▸");
+        Label expandButton = new Label();
+        expandButton.setGraphic(TablerIcon.of(TablerIcons.CHEVRON_RIGHT));
         expandButton.getStyleClass().add("dashboard-rail-button");
         Tooltip.install(expandButton, new Tooltip("Показать историю поиска"));
         expandButton.setOnMouseClicked(e -> expand());
@@ -64,7 +67,8 @@ public class Dashboard extends VBox {
         historyTitle.getStyleClass().add("dashboard-section-title");
         HBox.setHgrow(historyTitle, Priority.ALWAYS);
         
-        Label collapseButton = new Label("◂");
+        Label collapseButton = new Label();
+        collapseButton.setGraphic(TablerIcon.of(TablerIcons.CHEVRON_LEFT));
         collapseButton.getStyleClass().add("dashboard-header-button");
         Tooltip.install(collapseButton, new Tooltip("Свернуть"));
         collapseButton.setOnMouseClicked(e -> collapse());
@@ -181,7 +185,8 @@ public class Dashboard extends VBox {
         Label resultLabel = new Label(resultText.toString());
         resultLabel.getStyleClass().add("history-item-result");
         
-        Button repeatButton = new Button("↻ Повторить");
+        Button repeatButton = new Button("Повторить");
+        repeatButton.setGraphic(TablerIcon.of(TablerIcons.REFRESH, 14));
         repeatButton.getStyleClass().add("history-item-repeat");
         repeatButton.setMaxWidth(Double.MAX_VALUE);
         repeatButton.setOnAction(e -> {

@@ -2,6 +2,7 @@ package com.rmc.ui.navigation;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 
@@ -14,7 +15,7 @@ public class NavigationItem extends HBox {
     private final Label text;
     private final Runnable handler;
     
-    public NavigationItem(String icon, String text, Runnable handler) {
+    public NavigationItem(Node iconNode, String text, Runnable handler) {
         this.handler = handler;
         
         getStyleClass().add("navigation-item");
@@ -25,8 +26,9 @@ public class NavigationItem extends HBox {
         this.text = new Label(text);
         this.text.getStyleClass().add("nav-text");
         
-        if (icon != null && !icon.isEmpty()) {
-            this.icon = new Label(icon);
+        if (iconNode != null) {
+            this.icon = new Label();
+            this.icon.setGraphic(iconNode);
             this.icon.getStyleClass().add("nav-icon");
             getChildren().addAll(this.icon, this.text);
         } else {
@@ -43,9 +45,9 @@ public class NavigationItem extends HBox {
      * Обновить иконку пункта меню (если она была задана при создании) —
      * нужно для переключателя темы, который меняет луну на солнце и обратно.
      */
-    public void setIcon(String iconText) {
+    public void setIcon(Node iconNode) {
         if (icon != null) {
-            icon.setText(iconText);
+            icon.setGraphic(iconNode);
         }
     }
     

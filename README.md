@@ -17,6 +17,7 @@
 - **Apache POI** — экспорт в Excel (`.xlsx`)
 - **java.net.http.HttpClient** — все сетевые запросы к порталу и к GitHub
 - **jpackage + WiX Toolset** — сборка Windows-установщика (`build-installer.bat`)
+- **[Tabler Icons](https://github.com/tabler/tabler-icons)** (MIT) — иконки интерфейса. Не отдельная библиотека, а свои классы `ui.icons.TablerIcon`/`TablerIcons`, которые строят JavaFX-узел (`SVGPath`) из исходных данных иконок Tabler — так иконки красятся через CSS и следуют теме оформления
 
 ## Как это устроено
 

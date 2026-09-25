@@ -1,5 +1,7 @@
 package com.rmc.ui.workspace.views;
 
+import com.rmc.ui.icons.TablerIcon;
+import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import com.rmc.ui.workspace.WorkspaceView;
 import com.rmc.ui.workspace.components.ActionButton;
@@ -27,8 +29,8 @@ public class ErrorView extends VBox implements WorkspaceView {
         setSpacing(16);
         
         // Error icon
-        Label icon = new Label("❌");
-        icon.setStyle("-fx-font-size: 64px;");
+        Label icon = new Label();
+        icon.setGraphic(TablerIcon.of(TablerIcons.ALERT_TRIANGLE, 64));
         
         // Title
         Label title = new Label("Произошла ошибка");
@@ -39,12 +41,14 @@ public class ErrorView extends VBox implements WorkspaceView {
         errorLabel.getStyleClass().add("error-message");
         
         // Retry button
-        retryButton = new ActionButton("🔄 Повторить", ActionButton.Style.PRIMARY);
+        retryButton = new ActionButton("Повторить", ActionButton.Style.PRIMARY);
+        retryButton.setGraphic(TablerIcon.onPrimary(TablerIcons.REFRESH, 14));
         retryButton.setOnAction(e -> container.onRetry());
         retryButton.setMaxWidth(200);
         
         // Back button
-        backButton = new ActionButton("← Назад", ActionButton.Style.SECONDARY);
+        backButton = new ActionButton("Назад", ActionButton.Style.SECONDARY);
+        backButton.setGraphic(TablerIcon.of(TablerIcons.ARROW_LEFT, 14));
         backButton.setOnAction(e -> container.onBackToFilters());
         backButton.setMaxWidth(200);
         

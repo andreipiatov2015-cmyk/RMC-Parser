@@ -6,6 +6,8 @@ import com.rmc.config.ServerConfig;
 import com.rmc.http.HttpClientService;
 import com.rmc.logging.AppLogger;
 import com.rmc.state.ApplicationState;
+import com.rmc.ui.icons.TablerIcon;
+import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import com.rmc.ui.workspace.WorkspaceView;
 import javafx.geometry.Insets;
@@ -54,7 +56,8 @@ public class AuthView extends VBox implements WorkspaceView {
         card.setMaxWidth(320);
         
         // Title
-        Label title = new Label("🔐 Вход в систему");
+        Label title = new Label("Вход в систему");
+        title.setGraphic(TablerIcon.of(TablerIcons.LOCK, 20));
         title.getStyleClass().add("auth-title");
         
         // Error label

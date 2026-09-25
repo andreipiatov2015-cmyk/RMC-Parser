@@ -7,6 +7,8 @@ import com.rmc.config.ServerConfig;
 import com.rmc.http.HttpClientService;
 import com.rmc.logging.AppLogger;
 import com.rmc.state.ApplicationState;
+import com.rmc.ui.icons.TablerIcon;
+import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import com.rmc.ui.workspace.WorkspaceState;
 import com.rmc.ui.workspace.WorkspaceView;
@@ -51,7 +53,8 @@ public class AccountPickerView extends VBox implements WorkspaceView {
         setAlignment(Pos.CENTER);
         setSpacing(24);
         
-        Label title = new Label("👤 Выберите учётную запись");
+        Label title = new Label("Выберите учётную запись");
+        title.setGraphic(TablerIcon.of(TablerIcons.USER, 20));
         title.getStyleClass().add("account-picker-title");
         
         cardsPane = new FlowPane();
@@ -247,7 +250,8 @@ public class AccountPickerView extends VBox implements WorkspaceView {
         avatar.setMaxSize(64, 64);
         avatar.setMinSize(64, 64);
         
-        Label icon = new Label("👤");
+        Label icon = new Label();
+        icon.setGraphic(TablerIcon.of(TablerIcons.USER, 28));
         icon.getStyleClass().add("account-avatar-icon");
         avatar.getChildren().add(icon);
         

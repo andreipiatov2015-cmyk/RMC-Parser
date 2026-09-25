@@ -5,6 +5,8 @@ import com.rmc.favorites.FavoriteInstitutionsService;
 import com.rmc.filters.parser.FilterOption;
 import com.rmc.filters.session.FilterSession;
 import com.rmc.ui.theme.ThemeService;
+import com.rmc.ui.icons.TablerIcon;
+import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import com.rmc.ui.workspace.WorkspaceView;
 import javafx.collections.FXCollections;
@@ -46,7 +48,8 @@ public class FavoritesView extends VBox implements WorkspaceView {
         setSpacing(24);
         setPadding(new Insets(24));
         
-        Label title = new Label("⭐ Избранные учреждения");
+        Label title = new Label("Избранные учреждения");
+        title.setGraphic(TablerIcon.of(TablerIcons.STAR, 20));
         title.getStyleClass().add("account-picker-title");
         
         cardsPane = new FlowPane();
@@ -57,7 +60,8 @@ public class FavoritesView extends VBox implements WorkspaceView {
         cardsPane.setMaxWidth(760);
         cardsPane.setPrefWrapLength(760);
         
-        Button backButton = new Button("← Назад к фильтрам");
+        Button backButton = new Button("Назад к фильтрам");
+        backButton.setGraphic(TablerIcon.of(TablerIcons.ARROW_LEFT, 14));
         backButton.getStyleClass().add("action-button-secondary");
         backButton.setOnAction(e -> container.onBackToFilters());
         
@@ -96,8 +100,8 @@ public class FavoritesView extends VBox implements WorkspaceView {
         card.setPadding(new Insets(20));
         card.setPrefWidth(160);
         
-        Label icon = new Label("🏫");
-        icon.setStyle("-fx-font-size: 32px;");
+        Label icon = new Label();
+        icon.setGraphic(TablerIcon.of(TablerIcons.SCHOOL, 32));
         
         Label nameLabel = new Label(favorite.getName());
         nameLabel.getStyleClass().add("account-card-name");

@@ -4,6 +4,8 @@ import com.rmc.export.ExportService;
 import com.rmc.search.model.AnalysisResult;
 import com.rmc.search.model.InstitutionAnalysis;
 import com.rmc.search.service.StatDisplayPreferences;
+import com.rmc.ui.icons.TablerIcon;
+import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import com.rmc.ui.workspace.WorkspaceView;
 import com.rmc.ui.workspace.components.ActionButton;
@@ -38,7 +40,7 @@ import java.util.Set;
  * <p>Показатели считаются всегда в двух наборах — только по программам,
  * прошедшим фильтр, и по учреждениям целиком (см. {@link AnalysisResult}).
  * Какие из них реально показывать на экране, решает пользователь через
- * сворачиваемый список галочек "⚙ Показатели"; выбор сохраняется между
+ * сворачиваемый список галочек "Показатели"; выбор сохраняется между
  * запусками программы ({@link StatDisplayPreferences}).</p>
  */
 public class ResultsView extends VBox implements WorkspaceView {
@@ -62,7 +64,8 @@ public class ResultsView extends VBox implements WorkspaceView {
         setSpacing(16);
         
         // Title
-        Label title = new Label("📊 Результаты анализа");
+        Label title = new Label("Результаты анализа");
+        title.setGraphic(TablerIcon.of(TablerIcons.CHART_BAR, 20));
         title.getStyleClass().add("results-title");
         
         // Summary line (найдено программ / учреждений)
@@ -70,7 +73,8 @@ public class ResultsView extends VBox implements WorkspaceView {
         summaryLabel.getStyleClass().add("results-summary");
         
         // Сворачиваемый список галочек: какие показатели показывать.
-        statsToggleButton = new ActionButton("⚙ Показатели ▾", ActionButton.Style.SECONDARY);
+        statsToggleButton = new ActionButton("Показатели ▾", ActionButton.Style.SECONDARY);
+        statsToggleButton.setGraphic(TablerIcon.of(TablerIcons.ADJUSTMENTS_HORIZONTAL, 14));
         statsToggleButton.setOnAction(e -> toggleStatsPanel());
         
         statsCheckboxPane = new FlowPane();
@@ -106,10 +110,12 @@ public class ResultsView extends VBox implements WorkspaceView {
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
         
         // Back + export buttons
-        backButton = new ActionButton("← Назад к фильтрам", ActionButton.Style.SECONDARY);
+        backButton = new ActionButton("Назад к фильтрам", ActionButton.Style.SECONDARY);
+        backButton.setGraphic(TablerIcon.of(TablerIcons.ARROW_LEFT, 14));
         backButton.setOnAction(e -> container.onBackToFilters());
         
-        exportButton = new ActionButton("📥 Экспорт в Excel", ActionButton.Style.PRIMARY);
+        exportButton = new ActionButton("Экспорт в Excel", ActionButton.Style.PRIMARY);
+        exportButton.setGraphic(TablerIcon.onPrimary(TablerIcons.DOWNLOAD, 14));
         exportButton.setOnAction(e -> onExport());
         exportButton.setDisable(true);
         
@@ -196,7 +202,7 @@ public class ResultsView extends VBox implements WorkspaceView {
         boolean nowVisible = !statsCheckboxPane.isVisible();
         statsCheckboxPane.setVisible(nowVisible);
         statsCheckboxPane.setManaged(nowVisible);
-        statsToggleButton.setText(nowVisible ? "⚙ Показатели ▴" : "⚙ Показатели ▾");
+        statsToggleButton.setText(nowVisible ? "Показатели ▴" : "Показатели ▾");
     }
     
     private void onExport() {
@@ -335,7 +341,7 @@ public class ResultsView extends VBox implements WorkspaceView {
                 statsLine.append(entry.getKey()).append(": ").append(entry.getValue());
             }
             if (statsLine.length() == 0) {
-                statsLine.append("(показатели скрыты — включите нужные в разделе \"⚙ Показатели\" выше)");
+                statsLine.append("(показатели скрыты — включите нужные в разделе \"Показатели\" выше)");
             }
             
             Label statsLabel = new Label(statsLine.toString());

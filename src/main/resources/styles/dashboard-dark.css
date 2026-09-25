@@ -399,6 +399,13 @@
     -fx-text-fill: #E6EDF3;
 }
 
+/* ========== Tabler Icons ========== */
+.dark-theme .tabler-icon {
+    -fx-stroke: #8B949E;
+}
+
+/* tabler-icon-on-primary остаётся белой в обеих темах — переопределение не нужно */
+
 .dark-theme .app-dialog .button-bar .button:hover {
     -fx-background-color: #30363D;
 }

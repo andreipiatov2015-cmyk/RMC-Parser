@@ -946,6 +946,15 @@
     -fx-cursor: hand;
 }
 
+/* ========== Tabler Icons (github.com/tabler/tabler-icons, MIT) ========== */
+.tabler-icon {
+    -fx-stroke: #57606A;
+}
+
+.tabler-icon-on-primary {
+    -fx-stroke: #FFFFFF;
+}
+
 .app-dialog .button-bar .button:hover {
     -fx-background-color: #E8ECF0;
 }

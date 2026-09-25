@@ -1,6 +1,8 @@
 package com.rmc.ui.navigation;
 
 import com.rmc.ui.MainWindow;
+import com.rmc.ui.icons.TablerIcon;
+import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.theme.ThemeService;
 import com.rmc.update.UpdateCheckResult;
 import com.rmc.update.UpdateCheckService;
@@ -93,13 +95,13 @@ public class NavigationDrawer extends VBox {
         topItems.setSpacing(2);
         topItems.setPadding(new Insets(8, 0, 8, 0));
         topItems.getChildren().add(
-                createMenuItem("⭐", "Избранные учреждения", () -> {
+                createMenuItem(TablerIcon.of(TablerIcons.STAR), "Избранные учреждения", () -> {
                     close();
                     mainWindow.getWorkspace().showFavorites();
                 })
         );
         topItems.getChildren().add(
-                createMenuItem("🤖", "RMCAI", () -> {
+                createMenuItem(TablerIcon.of(TablerIcons.ROBOT), "RMCAI", () -> {
                     close();
                     mainWindow.getWorkspace().showRmcAi();
                 })
@@ -120,7 +122,7 @@ public class NavigationDrawer extends VBox {
         menuItems.setSpacing(2);
         menuItems.setPadding(new Insets(8, 0, 8, 0));
         
-        themeItem = createMenuItem(themeIcon(), themeLabel(), this::handleThemeToggle);
+        themeItem = createMenuItem(TablerIcon.of(themeIconPath()), themeLabel(), this::handleThemeToggle);
         
         menuItems.getChildren().addAll(
             themeItem,
@@ -141,8 +143,8 @@ public class NavigationDrawer extends VBox {
         });
     }
     
-    private NavigationItem createMenuItem(String icon, String text, Runnable handler) {
-        return new NavigationItem(icon, text, handler);
+    private NavigationItem createMenuItem(javafx.scene.Node iconNode, String text, Runnable handler) {
+        return new NavigationItem(iconNode, text, handler);
     }
     
     public void toggle() {
@@ -199,12 +201,12 @@ public class NavigationDrawer extends VBox {
      */
     private void handleThemeToggle() {
         ThemeService.toggle();
-        themeItem.setIcon(themeIcon());
+        themeItem.setIcon(TablerIcon.of(themeIconPath()));
         themeItem.setText(themeLabel());
     }
     
-    private String themeIcon() {
-        return ThemeService.isDarkMode() ? "☀" : "🌙";
+    private String themeIconPath() {
+        return ThemeService.isDarkMode() ? TablerIcons.SUN : TablerIcons.MOON;
     }
     
     private String themeLabel() {

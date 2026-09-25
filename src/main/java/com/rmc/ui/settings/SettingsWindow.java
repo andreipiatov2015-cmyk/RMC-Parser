@@ -3,6 +3,8 @@ package com.rmc.ui.settings;
 import com.rmc.auth.account.AccountStorageService;
 import com.rmc.auth.account.SavedAccount;
 import com.rmc.state.ApplicationState;
+import com.rmc.ui.icons.TablerIcon;
+import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.theme.ThemeService;
 import com.rmc.update.UpdateCheckResult;
 import com.rmc.update.UpdateCheckService;
@@ -169,7 +171,8 @@ public class SettingsWindow {
                     // покажем заглушку ниже
                 }
             }
-            Label placeholder = new Label("👤");
+            Label placeholder = new Label();
+            placeholder.setGraphic(TablerIcon.of(TablerIcons.USER, 40));
             placeholder.getStyleClass().add("account-avatar-icon");
             avatarPreview.getChildren().add(placeholder);
         };
@@ -239,11 +242,12 @@ public class SettingsWindow {
         Label description = new Label("Тема интерфейса");
         description.getStyleClass().add("account-picker-status");
         
-        Button themeToggleButton = new Button();
-        themeToggleButton.setText(ThemeService.isDarkMode() ? "☀ Переключить на светлую" : "🌙 Переключить на тёмную");
+        Button themeToggleButton = new Button(ThemeService.isDarkMode() ? "Переключить на светлую" : "Переключить на тёмную");
+        themeToggleButton.setGraphic(TablerIcon.of(themeIconPath()));
         themeToggleButton.setOnAction(e -> {
             ThemeService.toggle();
-            themeToggleButton.setText(ThemeService.isDarkMode() ? "☀ Переключить на светлую" : "🌙 Переключить на тёмную");
+            themeToggleButton.setText(ThemeService.isDarkMode() ? "Переключить на светлую" : "Переключить на тёмную");
+            themeToggleButton.setGraphic(TablerIcon.of(themeIconPath()));
             boolean dark = ThemeService.isDarkMode();
             if (dark && !stage.getScene().getRoot().getStyleClass().contains("dark-theme")) {
                 stage.getScene().getRoot().getStyleClass().add("dark-theme");
@@ -419,5 +423,9 @@ public class SettingsWindow {
         Label label = new Label(text);
         label.getStyleClass().add("filter-section-title");
         return label;
+    }
+    
+    private String themeIconPath() {
+        return ThemeService.isDarkMode() ? TablerIcons.SUN : TablerIcons.MOON;
     }
 }

@@ -3,6 +3,8 @@ package com.rmc.ui.topbar;
 import com.rmc.auth.account.AccountStorageService;
 import com.rmc.auth.account.SavedAccount;
 import com.rmc.state.ApplicationState;
+import com.rmc.ui.icons.TablerIcon;
+import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.settings.SettingsWindow;
 import com.rmc.ui.theme.ThemeService;
 import javafx.geometry.Insets;
@@ -63,14 +65,14 @@ public class TopBar extends HBox {
         
         // Быстрый доступ — раньше эти два пункта были только в выезжающем
         // меню, теперь на виду всегда, с подсказкой при наведении.
-        favoritesButton = iconButton("⭐", "Избранные учреждения");
+        favoritesButton = iconButton(TablerIcons.STAR, "Избранные учреждения");
         favoritesButton.setOnMouseClicked(e -> {
             if (onShowFavorites != null) {
                 onShowFavorites.run();
             }
         });
         
-        rmcAiButton = iconButton("🤖", "RMCAI");
+        rmcAiButton = iconButton(TablerIcons.ROBOT, "RMCAI");
         rmcAiButton.setOnMouseClicked(e -> {
             if (onShowRmcAi != null) {
                 onShowRmcAi.run();
@@ -79,13 +81,14 @@ public class TopBar extends HBox {
         
         // Быстрое переключение темы — дублирует то же самое в "Настройках",
         // но тему меняют часто, доставать её из настроек каждый раз неудобно.
-        themeButton = new Label(themeIcon());
+        themeButton = new Label();
+        themeButton.setGraphic(TablerIcon.of(themeIconPath()));
         themeButton.getStyleClass().add("topbar-icon-button");
         Tooltip themeTooltipControl = new Tooltip(themeTooltip());
         Tooltip.install(themeButton, themeTooltipControl);
         themeButton.setOnMouseClicked(e -> {
             ThemeService.toggle();
-            themeButton.setText(themeIcon());
+            themeButton.setGraphic(TablerIcon.of(themeIconPath()));
             themeTooltipControl.setText(themeTooltip());
         });
         
@@ -125,15 +128,16 @@ public class TopBar extends HBox {
         refreshUserBlock();
     }
     
-    private Label iconButton(String icon, String tooltipText) {
-        Label label = new Label(icon);
+    private Label iconButton(String iconPathData, String tooltipText) {
+        Label label = new Label();
+        label.setGraphic(TablerIcon.of(iconPathData));
         label.getStyleClass().add("topbar-icon-button");
         Tooltip.install(label, new Tooltip(tooltipText));
         return label;
     }
     
-    private String themeIcon() {
-        return ThemeService.isDarkMode() ? "☀" : "🌙";
+    private String themeIconPath() {
+        return ThemeService.isDarkMode() ? TablerIcons.SUN : TablerIcons.MOON;
     }
     
     private String themeTooltip() {
@@ -202,7 +206,8 @@ public class TopBar extends HBox {
                 // покажем заглушку ниже
             }
         }
-        Label placeholder = new Label("👤");
+        Label placeholder = new Label();
+        placeholder.setGraphic(TablerIcon.of(TablerIcons.USER, 14));
         placeholder.getStyleClass().add("topbar-avatar-icon");
         avatarCircle.getChildren().add(placeholder);
     }

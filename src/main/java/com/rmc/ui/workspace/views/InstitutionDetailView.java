@@ -11,6 +11,8 @@ import com.rmc.search.service.InstitutionProgramsService;
 import com.rmc.search.service.ProgramSearchService;
 import com.rmc.search.service.SearchResult;
 import com.rmc.state.ApplicationState;
+import com.rmc.ui.icons.TablerIcon;
+import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import com.rmc.ui.workspace.WorkspaceView;
 import com.rmc.ui.workspace.components.DonutChart;
@@ -64,7 +66,8 @@ public class InstitutionDetailView extends VBox implements WorkspaceView {
         setSpacing(14);
         setPadding(new Insets(20));
         
-        Button backButton = new Button("← Назад к избранному");
+        Button backButton = new Button("Назад к избранному");
+        backButton.setGraphic(TablerIcon.of(TablerIcons.ARROW_LEFT, 14));
         backButton.getStyleClass().add("action-button-secondary");
         backButton.setOnAction(e -> container.showFavorites());
         
