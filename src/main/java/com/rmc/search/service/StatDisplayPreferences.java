@@ -10,19 +10,20 @@ import java.util.prefs.Preferences;
 
 /**
  * Хранит, какие показатели ("Зачислений по сертификату", "Зачислений по
- * Бюджету" и т.д.) пользователь решил СКРЫТЬ из результатов анализа —
+ * Бюджету" и т.д.) пользователь ОТМЕТИЛ для показа в результатах анализа —
  * настройка переживает перезапуск программы и компьютера (реестр Windows
  * через стандартный Java Preferences API).
  *
- * <p>Хранится именно набор скрытых показателей, а не показанных: так
- * любой новый показатель, который раньше не встречался (например, сайт
- * добавил новую метрику), по умолчанию виден пользователю, а не пропадает
- * молча.</p>
+ * <p>Хранится именно набор отмеченных показателей, и по умолчанию он
+ * пустой: при первом запуске не отмечено ничего, пользователь сам
+ * выбирает, что ему нужно (раньше было наоборот — хранился набор скрытых,
+ * и по умолчанию показывалось всё). Соответственно, новый показатель,
+ * которого раньше не встречалось, тоже по умолчанию не отмечен.</p>
  */
 public class StatDisplayPreferences {
     
     private static final Logger logger = AppLogger.getLogger();
-    private static final String KEY_HIDDEN_STATS = "hiddenResultStats";
+    private static final String KEY_VISIBLE_STATS = "visibleResultStats";
     private static final String SEPARATOR = "\u001F"; // разделитель, который не встретится в названии показателя
     
     private final Preferences prefs;
@@ -32,32 +33,32 @@ public class StatDisplayPreferences {
     }
     
     /**
-     * @return набор названий показателей, которые пользователь скрыл
+     * @return набор названий показателей, которые пользователь отметил
      */
-    public Set<String> getHiddenStats() {
-        String raw = prefs.get(KEY_HIDDEN_STATS, "");
-        Set<String> hidden = new LinkedHashSet<>();
+    public Set<String> getVisibleStats() {
+        String raw = prefs.get(KEY_VISIBLE_STATS, "");
+        Set<String> visible = new LinkedHashSet<>();
         if (!raw.isEmpty()) {
             for (String part : raw.split(SEPARATOR)) {
                 if (!part.isEmpty()) {
-                    hidden.add(part);
+                    visible.add(part);
                 }
             }
         }
-        return hidden;
+        return visible;
     }
     
     public boolean isVisible(String statName) {
-        return !getHiddenStats().contains(statName);
+        return getVisibleStats().contains(statName);
     }
     
     public void setVisible(String statName, boolean visible) {
-        Set<String> hidden = getHiddenStats();
-        boolean changed = visible ? hidden.remove(statName) : hidden.add(statName);
+        Set<String> selected = getVisibleStats();
+        boolean changed = visible ? selected.add(statName) : selected.remove(statName);
         if (!changed) {
             return;
         }
-        prefs.put(KEY_HIDDEN_STATS, String.join(SEPARATOR, hidden));
+        prefs.put(KEY_VISIBLE_STATS, String.join(SEPARATOR, selected));
         flush();
     }
     

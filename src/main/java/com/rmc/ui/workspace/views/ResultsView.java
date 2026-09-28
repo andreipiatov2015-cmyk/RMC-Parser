@@ -14,7 +14,6 @@ import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
-import javafx.beans.binding.Bindings;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.geometry.Insets;
@@ -33,6 +32,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import javafx.util.Duration;
@@ -82,6 +82,7 @@ public class ResultsView extends VBox implements WorkspaceView {
     private final Label summaryLabel;
     private final CheckBox masterFilteredCheckBox;
     private final CheckBox masterOverallCheckBox;
+    private final Label selectionWarningLabel;
     private final ActionButton statsToggleButton;
     private final FlowPane statsCheckboxPane;
     private final FlowPane totalsPane;
@@ -129,6 +130,13 @@ public class ResultsView extends VBox implements WorkspaceView {
         HBox masterRow = new HBox(24, masterFilteredCheckBox, masterOverallCheckBox);
         masterRow.setAlignment(Pos.CENTER_LEFT);
         
+        // Красная подсказка под master-галочками: пока не отмечен ни один
+        // показатель, экран результатов выглядит пустым — объясняем почему.
+        selectionWarningLabel = new Label("Нужно выбрать хотя бы один фильтр");
+        selectionWarningLabel.getStyleClass().add("results-selection-warning");
+        selectionWarningLabel.setVisible(false);
+        selectionWarningLabel.setManaged(false);
+        
         // Сворачиваемый список галочек: точечно, по каждому показателю.
         statsToggleButton = new ActionButton("Показатели ▾", ActionButton.Style.SECONDARY);
         statsToggleButton.setGraphic(TablerIcon.of(TablerIcons.ADJUSTMENTS_HORIZONTAL, 14));
@@ -148,8 +156,8 @@ public class ResultsView extends VBox implements WorkspaceView {
         totalsPane.setHgap(12);
         totalsPane.setVgap(12);
         
-        VBox topSection = new VBox(12, summaryLabel, masterRow, statsToggleButton, statsCheckboxPane,
-                totalsPane, new Separator());
+        VBox topSection = new VBox(12, summaryLabel, masterRow, selectionWarningLabel, statsToggleButton,
+                statsCheckboxPane, totalsPane, new Separator());
         
         // Область с разбивкой: "По учреждениям" слева, "По программам"
         // справа, ширина каждой панели анимированно управляется splitRatio.
@@ -161,22 +169,11 @@ public class ResultsView extends VBox implements WorkspaceView {
         programsList.setSpacing(8);
         programsList.setPadding(new Insets(8, 0, 8, 0));
         
-        HBox splitContainer = new HBox();
-        splitContainer.getStyleClass().add("results-split-container");
-        
         institutionsPane = buildSplitPane("По учреждениям", institutionsList);
         programsPane = buildSplitPane("По программам", programsList);
         
-        institutionsPane.minWidthProperty().bind(
-                splitContainer.widthProperty().multiply(Bindings.subtract(1.0, splitRatio)));
-        institutionsPane.prefWidthProperty().bind(institutionsPane.minWidthProperty());
-        institutionsPane.maxWidthProperty().bind(institutionsPane.minWidthProperty());
-        
-        programsPane.minWidthProperty().bind(splitContainer.widthProperty().multiply(splitRatio));
-        programsPane.prefWidthProperty().bind(programsPane.minWidthProperty());
-        programsPane.maxWidthProperty().bind(programsPane.minWidthProperty());
-        
-        splitContainer.getChildren().addAll(institutionsPane, programsPane);
+        RatioSplitPane splitContainer = new RatioSplitPane(institutionsPane, programsPane, splitRatio);
+        splitContainer.getStyleClass().add("results-split-container");
         VBox.setVgrow(splitContainer, Priority.ALWAYS);
         
         // Back + export buttons
@@ -204,6 +201,78 @@ public class ResultsView extends VBox implements WorkspaceView {
         getChildren().addAll(title, topSection, splitContainer, buttonsRow);
         
         showPlaceholder();
+    }
+    
+    /**
+     * Область из двух панелей, делящих свою ширину в пропорции
+     * {@code ratio} (0 — вся ширина левой, 1 — вся правой).
+     *
+     * <p>Раскладка считается вручную, а собственные минимальную/
+     * предпочтительную ширину область объявляет нулевыми. Раньше панели
+     * растягивались через привязку своей ширины к ширине контейнера, а
+     * минимальная ширина самого контейнера считалась JavaFX как сумма
+     * минимальных ширин панелей — замкнутый круг: при округлении вверх на
+     * каждом кадре анимации контейнер "подрастал" на пиксель-другой, и после
+     * нескольких нажатий на стрелки вся программа уезжала за правый край
+     * экрана вместе с кнопками. Здесь ширина зависит только от того, что
+     * выделил родитель, и обратной связи нет.</p>
+     *
+     * <p>Каждая панель и сама область обрезаются по своим границам, иначе
+     * содержимое схлопнутой (нулевой ширины) панели торчало бы поверх
+     * соседней.</p>
+     */
+    private static final class RatioSplitPane extends Region {
+        
+        private final Region left;
+        private final Region right;
+        private final DoubleProperty ratio;
+        
+        RatioSplitPane(Region left, Region right, DoubleProperty ratio) {
+            this.left = left;
+            this.right = right;
+            this.ratio = ratio;
+            getChildren().addAll(left, right);
+            ratio.addListener((obs, oldValue, newValue) -> requestLayout());
+            clipToBounds(this);
+            clipToBounds(left);
+            clipToBounds(right);
+        }
+        
+        private static void clipToBounds(Region region) {
+            Rectangle clip = new Rectangle();
+            clip.widthProperty().bind(region.widthProperty());
+            clip.heightProperty().bind(region.heightProperty());
+            region.setClip(clip);
+        }
+        
+        @Override
+        protected double computeMinWidth(double height) {
+            return 0;
+        }
+        
+        @Override
+        protected double computePrefWidth(double height) {
+            return 0;
+        }
+        
+        @Override
+        protected double computeMinHeight(double width) {
+            return 0;
+        }
+        
+        @Override
+        protected double computePrefHeight(double width) {
+            return 200;
+        }
+        
+        @Override
+        protected void layoutChildren() {
+            double width = getWidth();
+            double height = getHeight();
+            double leftWidth = Math.round(width * (1.0 - ratio.get()));
+            left.resizeRelocate(0, 0, leftWidth, height);
+            right.resizeRelocate(leftWidth, 0, width - leftWidth, height);
+        }
     }
     
     private VBox buildSplitPane(String titleText, VBox contentList) {
@@ -354,6 +423,8 @@ public class ResultsView extends VBox implements WorkspaceView {
             return;
         }
         
+        updateSelectionWarning();
+        
         totalsPane.getChildren().clear();
         for (Map.Entry<String, Integer> entry : currentResult.getFilteredTotals().entrySet()) {
             if (statPrefs.isVisible(entry.getKey())) {
@@ -375,6 +446,20 @@ public class ResultsView extends VBox implements WorkspaceView {
         for (ProgramAnalysis program : currentResult.getPrograms()) {
             programsList.getChildren().add(createProgramRow(program));
         }
+    }
+    
+    /**
+     * Красная надпись "Нужно выбрать хотя бы один фильтр" видна, пока среди
+     * показателей текущего результата не отмечен ни один; как только
+     * отмечен хотя бы один (точечно или через master-галочку) — пропадает.
+     * Если показателей нет вообще (выбирать нечего) — не показывается.
+     */
+    private void updateSelectionWarning() {
+        Map<String, Integer> available = combinedTotals();
+        boolean nothingSelected = !available.isEmpty()
+                && available.keySet().stream().noneMatch(statPrefs::isVisible);
+        selectionWarningLabel.setVisible(nothingSelected);
+        selectionWarningLabel.setManaged(nothingSelected);
     }
     
     private void toggleStatsPanel() {
@@ -461,6 +546,8 @@ public class ResultsView extends VBox implements WorkspaceView {
     
     private void showPlaceholder() {
         summaryLabel.setText("Результаты появятся после завершения анализа");
+        selectionWarningLabel.setVisible(false);
+        selectionWarningLabel.setManaged(false);
         statsCheckboxPane.getChildren().clear();
         totalsPane.getChildren().clear();
         institutionsList.getChildren().clear();

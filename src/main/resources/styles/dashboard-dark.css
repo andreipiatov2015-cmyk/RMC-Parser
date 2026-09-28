@@ -264,6 +264,9 @@
 }
 
 /* ========== Results: разделённая область ========== */
+.dark-theme .results-selection-warning {
+    -fx-text-fill: #F85149;
+}
 .dark-theme .results-split-pane {
     -fx-background-color: #0D1117;
 }

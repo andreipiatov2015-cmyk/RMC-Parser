@@ -826,6 +826,12 @@
     -fx-text-fill: #CF222E;
 }
 
+.results-selection-warning {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #CF222E;
+}
+
 /* ========== Results: разделённая область "По учреждениям"/"По программам" ========== */
 .results-split-container {
     -fx-background-color: transparent;
