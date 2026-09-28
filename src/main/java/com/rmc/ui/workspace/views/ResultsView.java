@@ -418,10 +418,23 @@ public class ResultsView extends VBox implements WorkspaceView {
         }
     }
     
+    /** Показатели, отмеченные галочками — считываются один раз за перерисовку, а не на каждую строку. */
+    private Set<String> selectedStats = Set.of();
+    
+    /** Названия показателей, которые вообще бывают у отдельной программы (объединение по всем программам). */
+    private Set<String> programStatKeys = Set.of();
+    
     private void renderVisibleStats() {
         if (currentResult == null) {
             return;
         }
+        
+        selectedStats = statPrefs.getVisibleStats();
+        Set<String> programKeys = new java.util.LinkedHashSet<>();
+        for (ProgramAnalysis program : currentResult.getPrograms()) {
+            programKeys.addAll(program.getFilteredStats().keySet());
+        }
+        programStatKeys = programKeys;
         
         updateSelectionWarning();
         
@@ -594,18 +607,16 @@ public class ResultsView extends VBox implements WorkspaceView {
             row.getChildren().add(errorLabel);
         } else {
             StringBuilder statsLine = new StringBuilder();
-            for (Map.Entry<String, Integer> entry : institution.getFilteredStats().entrySet()) {
-                if (statPrefs.isVisible(entry.getKey())) {
-                    appendStat(statsLine, entry);
-                }
-            }
-            for (Map.Entry<String, Integer> entry : institution.getOverallStats().entrySet()) {
-                if (statPrefs.isVisible(entry.getKey())) {
-                    appendStat(statsLine, entry);
-                }
+            // Показываем все ОТМЕЧЕННЫЕ показатели, а если у этого учреждения
+            // такого показателя нет — пишем 0 (а не молча пропускаем).
+            appendSelected(statsLine, currentResult.getFilteredTotals().keySet(), institution.getFilteredStats());
+            // Если страница учреждения не отдала показателей вовсе, это скорее
+            // сбой загрузки, а не "ноль" — тогда не выдаём нули за данные.
+            if (!institution.getOverallStats().isEmpty()) {
+                appendSelected(statsLine, currentResult.getOverallTotals().keySet(), institution.getOverallStats());
             }
             if (statsLine.length() == 0) {
-                statsLine.append("(показатели скрыты — включите нужные выше)");
+                statsLine.append(NO_SELECTED_STATS_HINT);
             }
             
             Label statsLabel = new Label(statsLine.toString());
@@ -647,13 +658,12 @@ public class ResultsView extends VBox implements WorkspaceView {
         });
         
         StringBuilder statsLine = new StringBuilder();
-        for (Map.Entry<String, Integer> entry : program.getFilteredStats().entrySet()) {
-            if (statPrefs.isVisible(entry.getKey())) {
-                appendStat(statsLine, entry);
-            }
-        }
+        // Ключи — показатели, которые бывают у программ вообще (не путаем с
+        // учрежденческими вроде "Программ по фильтру"); чего нет у этой
+        // программы — пишем 0.
+        appendSelected(statsLine, programStatKeys, program.getFilteredStats());
         if (statsLine.length() == 0) {
-            statsLine.append("(показатели скрыты — включите нужные выше)");
+            statsLine.append(NO_SELECTED_STATS_HINT);
         }
         
         Label statsLabel = new Label(statsLine.toString());
@@ -664,11 +674,21 @@ public class ResultsView extends VBox implements WorkspaceView {
         return row;
     }
     
-    private void appendStat(StringBuilder statsLine, Map.Entry<String, Integer> entry) {
-        if (statsLine.length() > 0) {
-            statsLine.append("   ");
+    private static final String NO_SELECTED_STATS_HINT = "(нет отмеченных показателей)";
+    
+    /**
+     * Дописывает в строку значения отмеченных показателей из {@code keys};
+     * если у конкретной строки такого показателя нет — выводит 0.
+     */
+    private void appendSelected(StringBuilder statsLine, Iterable<String> keys, Map<String, Integer> values) {
+        for (String key : keys) {
+            if (selectedStats.contains(key)) {
+                if (statsLine.length() > 0) {
+                    statsLine.append("   ");
+                }
+                statsLine.append(key).append(": ").append(values.getOrDefault(key, 0));
+            }
         }
-        statsLine.append(entry.getKey()).append(": ").append(entry.getValue());
     }
     
     @Override
