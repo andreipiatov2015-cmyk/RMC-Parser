@@ -73,6 +73,22 @@ public class FilterParser {
                 filterForm = document.selectFirst("form[class*=filter]");
             }
             
+            // Если ни то, ни другое не нашлось — прежде чем разбирать весь
+            // документ подряд (см. фолбэк ниже), проверяем: а не подсунул ли
+            // сайт вместо страницы фильтров страницу входа? Это бывает, если
+            // сессия на самом деле не авторизована (например, слетели куки),
+            // хотя сам вход в приложении прошёл без видимой ошибки. У формы
+            // входа всегда есть поле пароля — у формы фильтров такого поля
+            // не бывает в принципе, это надёжный признак.
+            if (filterForm == null && document.selectFirst("input[type=password]") != null) {
+                logger.warn(LOG_LOGIN_PAGE_DETECTED);
+                return ParseResult.builder()
+                        .success(false)
+                        .errorMessage("Вместо страницы фильтров сайт вернул страницу входа — "
+                                + "похоже, сессия не авторизована. Попробуйте выйти и войти заново.")
+                        .build();
+            }
+            
             // Если всё ещё не нашли, используем весь документ
             if (filterForm == null) {
                 filterForm = document;
@@ -442,6 +458,8 @@ public class FilterParser {
     private static final String LOG_PARSING_COMPLETE = "Разбор завершён. Найдено фильтров: {}";
     private static final String LOG_PARSING_ERROR = "Ошибка разбора HTML: {}";
     private static final String LOG_EMPTY_HTML = "HTML пуст";
+    private static final String LOG_LOGIN_PAGE_DETECTED =
+            "Вместо страницы фильтров получена страница входа (найдено поле пароля) — сессия не авторизована";
     
     /**
      * Результат парсинга.
