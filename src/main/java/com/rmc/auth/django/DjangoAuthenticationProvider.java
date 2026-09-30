@@ -107,6 +107,15 @@ public class DjangoAuthenticationProvider {
                 return DjangoAuthResult.failure("Неожиданный статус: " + getResponse.getStatusCode());
             }
             
+            // Проверяем расхождение системного времени компьютера с сервером —
+            // известный случай: при разнице в несколько минут сайт может
+            // отклонять вход без объяснения причины (это заметили на практике:
+            // спешащие на 8 минут часы ломали авторизацию). Проверяем сразу
+            // после первого ответа, чтобы подсказка была готова к любому
+            // из возможных исходов ниже.
+            Optional<String> clockDriftWarning = checkClockDrift(getResponse);
+            clockDriftWarning.ifPresent(w -> logger.warn(LOG_CLOCK_DRIFT, w));
+            
             report(listener, "Страница входа получена (" + getElapsed + " мс). Подготовка данных...");
             
             // Шаг 2: Сохраняем cookies автоматически (HttpClientService делает это)
@@ -166,7 +175,8 @@ public class DjangoAuthenticationProvider {
             if (loginError != null) {
                 logger.warn(LOG_AUTH_FAILED);
                 logger.warn(LOG_LOGIN_ERROR_FOUND, loginError);
-                return DjangoAuthResult.failure(loginError, responseBody);
+                String message = clockDriftWarning.map(w -> loginError + "\n\n" + w).orElse(loginError);
+                return DjangoAuthResult.failure(message, responseBody);
             }
             
             logger.info(LOG_AUTH_SUCCESS);
@@ -364,6 +374,41 @@ public class DjangoAuthenticationProvider {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
     
+    /**
+     * Сравнивает системное время компьютера со временем сервера (заголовок
+     * {@code Date} есть в любом HTTP-ответе). Расхождение в несколько минут
+     * на практике мешает входу — сайт может отклонять авторизацию без
+     * внятного сообщения об ошибке (см. историю: спешащие на 8 минут часы).
+     *
+     * @return текст-подсказку, если расхождение существенное
+     * ({@value #CLOCK_DRIFT_THRESHOLD_SECONDS} секунд и больше); иначе пусто
+     */
+    private Optional<String> checkClockDrift(HttpResponse response) {
+        Optional<String> dateHeader = response.getHeader("Date").or(() -> response.getHeader("date"));
+        if (dateHeader.isEmpty()) {
+            return Optional.empty();
+        }
+        
+        try {
+            java.time.ZonedDateTime serverTime = java.time.ZonedDateTime.parse(
+                    dateHeader.get(), java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME);
+            long driftSeconds = Math.abs(java.time.Duration
+                    .between(serverTime.toInstant(), java.time.Instant.now())
+                    .getSeconds());
+            
+            if (driftSeconds >= CLOCK_DRIFT_THRESHOLD_SECONDS) {
+                long driftMinutes = Math.round(driftSeconds / 60.0);
+                return Optional.of("Похоже, время на компьютере расходится с сервером примерно на "
+                        + driftMinutes + " мин. — проверьте дату и время на компьютере (это частая "
+                        + "причина отказа во входе без внятной ошибки).");
+            }
+        } catch (Exception e) {
+            logger.debug(LOG_CLOCK_PARSE_FAILED, e.getMessage());
+        }
+        
+        return Optional.empty();
+    }
+    
     private void report(ProgressListener listener, String message) {
         if (listener != null) {
             listener.onProgress(message);
@@ -373,6 +418,9 @@ public class DjangoAuthenticationProvider {
     // Константы для логирования
     private static final String LOG_GET_TIMING = "GET страницы входа занял {} мс";
     private static final String LOG_POST_TIMING = "POST с данными формы занял {} мс";
+    private static final String LOG_CLOCK_DRIFT = "{}";
+    private static final String LOG_CLOCK_PARSE_FAILED = "Не удалось разобрать заголовок Date для проверки времени: {}";
+    private static final long CLOCK_DRIFT_THRESHOLD_SECONDS = 120;
     private static final String LOG_START = "==================================================\nDjango авторизация\n==================================================";
     private static final String LOG_GETTING_LOGIN_PAGE = "Получение страницы авторизации: {}";
     private static final String LOG_HTTP_STATUS = "HTTP статус: {}";
