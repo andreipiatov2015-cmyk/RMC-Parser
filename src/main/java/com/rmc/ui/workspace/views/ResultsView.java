@@ -169,9 +169,20 @@ public class ResultsView extends VBox implements WorkspaceView {
         totalsPane.getStyleClass().add("results-totals-pane");
         totalsPane.setHgap(12);
         totalsPane.setVgap(12);
-        
+
+        // Ограничиваем высоту этого блока сверху (с прокруткой внутри, а
+        // не сжатием карточек) — иначе при большом числе отмеченных
+        // показателей (много карточек, перенос на несколько строк) блок
+        // мог бы вытолкнуть нижний ряд кнопок за пределы окна, если оно
+        // не развёрнуто на весь экран. Пока карточки умещаются — высота
+        // как обычно, по содержимому, прокрутка не появляется.
+        ScrollPane totalsScroll = new ScrollPane(totalsPane);
+        totalsScroll.setFitToWidth(true);
+        totalsScroll.getStyleClass().add("results-totals-scroll");
+        totalsScroll.setMaxHeight(220);
+
         VBox topSection = new VBox(12, summaryLabel, masterRow, selectionWarningLabel, statsToggleButton,
-                statsCheckboxPane, totalsPane, new Separator());
+                statsCheckboxPane, totalsScroll, new Separator());
         
         // Область с разбивкой: "По учреждениям" слева, "По программам"
         // справа, ширина каждой панели анимированно управляется splitRatio.
@@ -701,17 +712,27 @@ public class ResultsView extends VBox implements WorkspaceView {
         VBox card = new VBox();
         card.getStyleClass().add("results-stat-card");
         card.setAlignment(Pos.CENTER);
-        card.setSpacing(4);
-        card.setPadding(new Insets(12, 16, 12, 16));
+        card.setSpacing(2);
+        card.setPadding(new Insets(10, 14, 10, 14));
 
-        TextField valueField = selectableField(String.valueOf(value), "results-stat-value");
+        TextField valueField = selectableField(String.valueOf(value), "results-stat-value", "results-stat-card-field");
         valueField.setAlignment(Pos.CENTER);
+        valueField.setPrefColumnCount(Math.max(2, String.valueOf(value).length()));
 
-        TextArea nameArea = selectableArea(label, "results-stat-label");
-        nameArea.setMaxWidth(160);
-        nameArea.setPrefWidth(160);
+        // Однострочное поле, а не TextArea с переносом: TextArea даже при
+        // точном подсчёте высоты заметно "тяжелее" по вёрстке (своя
+        // внутренняя прокрутка), и из-за этого карточки показателей стали
+        // визуально огромными — блок с числами выталкивал нижние кнопки
+        // за пределы окна, если оно не развёрнуто на весь экран. Подписи
+        // показателей короткие, одной строки обычно достаточно; ширина
+        // карточки подстраивается под длину текста (setPrefColumnCount),
+        // а не высота — карточка становится чуть шире вместо того, чтобы
+        // расти вниз.
+        TextField nameField = selectableField(label, "results-stat-label", "results-stat-card-field");
+        nameField.setAlignment(Pos.CENTER);
+        nameField.setPrefColumnCount(Math.max(8, label.length()));
 
-        card.getChildren().addAll(valueField, nameArea);
+        card.getChildren().addAll(valueField, nameField);
         return card;
     }
 

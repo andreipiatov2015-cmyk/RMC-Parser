@@ -714,6 +714,23 @@
     -fx-background-color: transparent;
 }
 
+.results-totals-scroll,
+.results-totals-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.results-totals-scroll {
+    -fx-border-width: 0;
+    -fx-padding: 0;
+}
+
+/* Поля внутри карточки показателя (число + подпись) — компактные, без
+   рамки поля ввода, чтобы карточка была примерно того же размера, что и
+   раньше с обычными Label (см. createStatCard). */
+.results-stat-card-field {
+    -fx-padding: 1 2 1 2;
+}
+
 .results-stat-card {
     -fx-background-color: #FFFFFF;
     -fx-background-radius: 8;
