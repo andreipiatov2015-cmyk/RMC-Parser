@@ -827,8 +827,37 @@
 }
 
 .results-navigator-button {
-    -fx-font-size: 11px;
-    -fx-padding: 4 10 4 10;
+    -fx-font-size: 12px;
+    -fx-padding: 6 14 6 14;
+}
+
+/* ========== Выделяемый текст (вместо Label) ==========
+   TextField/TextArea под видом обычного текста — в отличие от Label, они
+   поддерживают выделение мышью, двойной клик по слову и Ctrl+C, как на
+   обычной веб-странице. Здесь убираем всё, что выдаёт в них поле ввода:
+   рамку, фон, засветку фокуса, внутренние отступы скролл-панели. */
+.selectable-text,
+.selectable-text .content,
+.selectable-text .scroll-pane,
+.selectable-text .scroll-pane .viewport {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+}
+
+.selectable-text {
+    -fx-border-width: 0;
+    -fx-padding: 0;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.selectable-text .content {
+    -fx-padding: 1 0 1 0;
+}
+
+.selectable-text:focused {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
 }
 
 .results-selection-warning {

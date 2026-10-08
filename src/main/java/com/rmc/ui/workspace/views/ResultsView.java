@@ -21,12 +21,15 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
@@ -37,6 +40,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import javafx.util.Duration;
@@ -85,7 +89,7 @@ public class ResultsView extends VBox implements WorkspaceView {
     private final WorkspaceContainer container;
     private final StatDisplayPreferences statPrefs = new StatDisplayPreferences();
     
-    private final Label summaryLabel;
+    private final TextField summaryLabel;
     private final CheckBox masterFilteredCheckBox;
     private final CheckBox masterOverallCheckBox;
     private final Label selectionWarningLabel;
@@ -116,9 +120,12 @@ public class ResultsView extends VBox implements WorkspaceView {
         title.setGraphic(TablerIcon.of(TablerIcons.CHART_BAR, 20));
         title.getStyleClass().add("results-title");
         
-        // Summary line (найдено программ / учреждений)
-        summaryLabel = new Label();
-        summaryLabel.getStyleClass().add("results-summary");
+        // Summary line (найдено программ / учреждений) — TextField, а не
+        // Label: клиент хочет, чтобы ЛЮБОЙ текст на экране результатов
+        // можно было выделить мышью и скопировать, как на обычном сайте.
+        // JavaFX Label такого не умеет, а нередактируемый TextField — умеет
+        // "из коробки" (выделение, двойной клик по слову, Ctrl+C).
+        summaryLabel = selectableField("", "results-summary");
         
         // Master-галочки — разовое действие "отметить/снять всё" в своей
         // группе: пишут напрямую в те же точечные предпочтения, после чего
@@ -696,38 +703,32 @@ public class ResultsView extends VBox implements WorkspaceView {
         card.setAlignment(Pos.CENTER);
         card.setSpacing(4);
         card.setPadding(new Insets(12, 16, 12, 16));
-        
-        Label valueLabel = new Label(String.valueOf(value));
-        valueLabel.getStyleClass().add("results-stat-value");
-        
-        Label nameLabel = new Label(label);
-        nameLabel.getStyleClass().add("results-stat-label");
-        nameLabel.setWrapText(true);
-        nameLabel.setMaxWidth(160);
-        nameLabel.setAlignment(Pos.CENTER);
-        nameLabel.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
-        
-        card.getChildren().addAll(valueLabel, nameLabel);
+
+        TextField valueField = selectableField(String.valueOf(value), "results-stat-value");
+        valueField.setAlignment(Pos.CENTER);
+
+        TextArea nameArea = selectableArea(label, "results-stat-label");
+        nameArea.setMaxWidth(160);
+        nameArea.setPrefWidth(160);
+
+        card.getChildren().addAll(valueField, nameArea);
         return card;
     }
-    
+
     private Node createInstitutionRow(InstitutionAnalysis institution) {
         VBox row = new VBox();
         row.getStyleClass().add("results-institution-row");
         row.setSpacing(4);
         row.setPadding(new Insets(10, 12, 10, 12));
-        
+
         String displayName = institution.getOrganizationName() != null
                 ? institution.getOrganizationName()
                 : institution.getOrganizationId();
-        Label nameLabel = new Label(displayName);
-        nameLabel.getStyleClass().add("results-institution-name");
-        row.getChildren().add(nameLabel);
-        
+        row.getChildren().add(selectableField(displayName, "results-institution-name"));
+
         if (!institution.isSuccess()) {
-            Label errorLabel = new Label("Ошибка: " + institution.getErrorMessage().orElse("не удалось получить данные"));
-            errorLabel.getStyleClass().add("results-institution-error");
-            row.getChildren().add(errorLabel);
+            String errorText = "Ошибка: " + institution.getErrorMessage().orElse("не удалось получить данные");
+            row.getChildren().add(selectableArea(errorText, "results-institution-error"));
         } else {
             StringBuilder statsLine = new StringBuilder();
             // Показываем все ОТМЕЧЕННЫЕ показатели, а если у этого учреждения
@@ -741,45 +742,44 @@ public class ResultsView extends VBox implements WorkspaceView {
             if (statsLine.length() == 0) {
                 statsLine.append(NO_SELECTED_STATS_HINT);
             }
-            
-            Label statsLabel = new Label(statsLine.toString());
-            statsLabel.getStyleClass().add("results-institution-stats");
-            statsLabel.setWrapText(true);
-            row.getChildren().add(statsLabel);
+
+            row.getChildren().add(selectableArea(statsLine.toString(), "results-institution-stats"));
         }
-        
+
         return row;
     }
-    
+
     private Node createProgramRow(ProgramAnalysis program) {
-        VBox row = new VBox();
-        row.getStyleClass().add("results-institution-row");
-        row.setSpacing(4);
-        row.setPadding(new Insets(10, 12, 10, 12));
-        
-        Label nameLabel = new Label(program.getProgramTitle());
-        nameLabel.getStyleClass().add("results-institution-name");
-        row.getChildren().add(nameLabel);
-        
+        // Весь текстовый блок — слева, растягивается; кнопка "Навигатор"
+        // (если есть ссылка) — справа от него, по центру высоты строки.
+        VBox content = new VBox();
+        content.setSpacing(4);
+
+        content.getChildren().add(selectableField(program.getProgramTitle(), "results-institution-name"));
+
         if (program.getOrganizationName() != null) {
-            Label orgLabel = new Label(program.getOrganizationName());
-            orgLabel.getStyleClass().add("results-institution-stats");
-            row.getChildren().add(orgLabel);
+            content.getChildren().add(selectableField(program.getOrganizationName(), "results-institution-stats"));
         }
-        
+
+        HBox row = new HBox();
+        row.getStyleClass().add("results-institution-row");
+        row.setSpacing(12);
+        row.setPadding(new Insets(10, 12, 10, 12));
+        row.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(content, Priority.ALWAYS);
+        row.getChildren().add(content);
+
         if (!program.isSuccess()) {
-            Label errorLabel = new Label("Ошибка: " + program.getErrorMessage().orElse("не удалось получить данные"));
-            errorLabel.getStyleClass().add("results-institution-error");
-            row.getChildren().add(errorLabel);
+            String errorText = "Ошибка: " + program.getErrorMessage().orElse("не удалось получить данные");
+            content.getChildren().add(selectableArea(errorText, "results-institution-error"));
             return row;
         }
-        
+
         program.getPriceCategoryEstimate().ifPresent(category -> {
-            Label priceLabel = new Label(ProgramAnalysis.PRICE_CATEGORY_LABEL + ": " + category);
-            priceLabel.getStyleClass().add("results-institution-stats");
-            row.getChildren().add(priceLabel);
+            String text = ProgramAnalysis.PRICE_CATEGORY_LABEL + ": " + category;
+            content.getChildren().add(selectableField(text, "results-institution-stats"));
         });
-        
+
         StringBuilder statsLine = new StringBuilder();
         // Ключи — показатели, которые бывают у программ вообще (не путаем с
         // учрежденческими вроде "Программ по фильтру"); чего нет у этой
@@ -788,24 +788,78 @@ public class ResultsView extends VBox implements WorkspaceView {
         if (statsLine.length() == 0) {
             statsLine.append(NO_SELECTED_STATS_HINT);
         }
-        
-        Label statsLabel = new Label(statsLine.toString());
-        statsLabel.getStyleClass().add("results-institution-stats");
-        statsLabel.setWrapText(true);
-        row.getChildren().add(statsLabel);
+        content.getChildren().add(selectableArea(statsLine.toString(), "results-institution-stats"));
 
         // Кнопка "Навигатор" — только если на странице самой программы
         // нашлась такая ссылка (не у всех программ она есть); открывает
-        // её в браузере по умолчанию, не внутри приложения.
+        // её в браузере по умолчанию, не внутри приложения. Зелёная, как
+        // "Экспорт в Excel" — и справа от текста, а не отдельной строкой.
         program.getNavigatorUrl().ifPresent(url -> {
-            ActionButton navigatorButton = new ActionButton("Навигатор", ActionButton.Style.SECONDARY);
+            ActionButton navigatorButton = new ActionButton("Навигатор", ActionButton.Style.PRIMARY);
             navigatorButton.getStyleClass().add("results-navigator-button");
-            navigatorButton.setGraphic(TablerIcon.of(TablerIcons.EXTERNAL_LINK, 12));
+            navigatorButton.setGraphic(TablerIcon.onPrimary(TablerIcons.EXTERNAL_LINK, 12));
             navigatorButton.setOnAction(e -> openInBrowser(url));
             row.getChildren().add(navigatorButton);
         });
 
         return row;
+    }
+
+    /**
+     * Нередактируемое однострочное поле вместо {@link Label} — в отличие от
+     * Label, TextField поддерживает выделение текста мышью, двойной клик по
+     * слову и Ctrl+C, как на обычной веб-странице. Визуально выглядит как
+     * обычный текст благодаря классу "selectable-text" (см. CSS) — без
+     * рамки и фона поля ввода.
+     */
+    private static TextField selectableField(String text, String... styleClasses) {
+        TextField field = new TextField(text != null ? text : "");
+        field.setEditable(false);
+        field.setFocusTraversable(true);
+        field.getStyleClass().add("selectable-text");
+        field.getStyleClass().addAll(styleClasses);
+        field.setMaxWidth(Double.MAX_VALUE);
+        return field;
+    }
+
+    /**
+     * То же самое, что {@link #selectableField}, но для текста, который
+     * может переноситься на несколько строк (TextArea, а не TextField).
+     * Высота подгоняется под содержимое автоматически (см.
+     * {@link #bindAutoHeight}), чтобы не появлялась внутренняя прокрутка
+     * там, где её не было у прежнего Label с setWrapText(true).
+     */
+    private static TextArea selectableArea(String text, String... styleClasses) {
+        TextArea area = new TextArea(text != null ? text : "");
+        area.setEditable(false);
+        area.setWrapText(true);
+        area.setFocusTraversable(true);
+        area.getStyleClass().add("selectable-text");
+        area.getStyleClass().addAll(styleClasses);
+        area.setMaxWidth(Double.MAX_VALUE);
+        area.setPrefRowCount(1);
+        bindAutoHeight(area);
+        return area;
+    }
+
+    private static void bindAutoHeight(TextArea area) {
+        Text measurer = new Text();
+        measurer.textProperty().bind(area.textProperty());
+        measurer.fontProperty().bind(area.fontProperty());
+
+        Runnable resize = () -> {
+            double width = area.getWidth();
+            if (width <= 0) {
+                return;
+            }
+            measurer.setWrappingWidth(Math.max(0, width - 24));
+            double textHeight = measurer.getLayoutBounds().getHeight();
+            area.setPrefHeight(textHeight + 22);
+        };
+
+        area.widthProperty().addListener((obs, oldV, newV) -> resize.run());
+        area.textProperty().addListener((obs, oldV, newV) -> Platform.runLater(resize));
+        Platform.runLater(resize);
     }
 
     /**
@@ -820,7 +874,7 @@ public class ResultsView extends VBox implements WorkspaceView {
                 java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
             } catch (Exception e) {
                 logger.error("Не удалось открыть ссылку навигатора ({}): {}", url, e.getMessage());
-                javafx.application.Platform.runLater(() ->
+                Platform.runLater(() ->
                         showInfoAlert("Ошибка", "Не удалось открыть ссылку в браузере:\n" + e.getMessage()));
             }
         }, "navigator-link-opener");
