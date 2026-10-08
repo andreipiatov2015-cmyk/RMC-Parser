@@ -1,6 +1,7 @@
 package com.rmc.ui.workspace.views;
 
 import com.rmc.export.ExportService;
+import com.rmc.logging.AppLogger;
 import com.rmc.search.model.AnalysisResult;
 import com.rmc.search.model.InstitutionAnalysis;
 import com.rmc.search.model.ProgramAnalysis;
@@ -10,6 +11,7 @@ import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import com.rmc.ui.workspace.WorkspaceView;
 import com.rmc.ui.workspace.components.ActionButton;
+import org.slf4j.Logger;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
@@ -73,7 +75,9 @@ import java.util.Set;
  * плавной анимацией.</p>
  */
 public class ResultsView extends VBox implements WorkspaceView {
-    
+
+    private static final Logger logger = AppLogger.getLogger();
+
     private enum SplitMode {
         INSTITUTIONS_ONLY, SPLIT, PROGRAMS_ONLY
     }
@@ -789,10 +793,41 @@ public class ResultsView extends VBox implements WorkspaceView {
         statsLabel.getStyleClass().add("results-institution-stats");
         statsLabel.setWrapText(true);
         row.getChildren().add(statsLabel);
-        
+
+        // Кнопка "Навигатор" — только если на странице самой программы
+        // нашлась такая ссылка (не у всех программ она есть); открывает
+        // её в браузере по умолчанию, не внутри приложения.
+        program.getNavigatorUrl().ifPresent(url -> {
+            ActionButton navigatorButton = new ActionButton("Навигатор", ActionButton.Style.SECONDARY);
+            navigatorButton.getStyleClass().add("results-navigator-button");
+            navigatorButton.setGraphic(TablerIcon.of(TablerIcons.EXTERNAL_LINK, 12));
+            navigatorButton.setOnAction(e -> openInBrowser(url));
+            row.getChildren().add(navigatorButton);
+        });
+
         return row;
     }
-    
+
+    /**
+     * Открывает ссылку в браузере по умолчанию на компьютере пользователя
+     * (не внутри самого приложения). Выполняется в отдельном потоке —
+     * {@code Desktop.browse} может ненадолго блокировать вызывающий поток
+     * на запуск внешнего процесса, а делать это на потоке JavaFX не стоит.
+     */
+    private void openInBrowser(String url) {
+        Thread thread = new Thread(() -> {
+            try {
+                java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+            } catch (Exception e) {
+                logger.error("Не удалось открыть ссылку навигатора ({}): {}", url, e.getMessage());
+                javafx.application.Platform.runLater(() ->
+                        showInfoAlert("Ошибка", "Не удалось открыть ссылку в браузере:\n" + e.getMessage()));
+            }
+        }, "navigator-link-opener");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
     private static final String NO_SELECTED_STATS_HINT = "(нет отмеченных показателей)";
     
     /**

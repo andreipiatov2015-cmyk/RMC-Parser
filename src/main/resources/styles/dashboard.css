@@ -826,6 +826,11 @@
     -fx-text-fill: #CF222E;
 }
 
+.results-navigator-button {
+    -fx-font-size: 11px;
+    -fx-padding: 4 10 4 10;
+}
+
 .results-selection-warning {
     -fx-font-size: 13px;
     -fx-font-weight: 600;
