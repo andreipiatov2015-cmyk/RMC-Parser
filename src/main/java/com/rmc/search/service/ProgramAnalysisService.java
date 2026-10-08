@@ -327,6 +327,7 @@ public class ProgramAnalysisService {
             
             programAccumulator.add(programBuilder
                     .filteredStats(detailResult.getStats())
+                    .navigatorUrl(detailResult.getNavigatorUrl().orElse(null))
                     .success(true)
                     .build());
         }

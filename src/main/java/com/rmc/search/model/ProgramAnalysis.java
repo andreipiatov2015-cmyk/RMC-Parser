@@ -27,9 +27,10 @@ public class ProgramAnalysis {
     private final String organizationId;
     private final Map<String, Integer> filteredStats;
     private final String priceCategoryEstimate;
+    private final String navigatorUrl;
     private final boolean success;
     private final String errorMessage;
-    
+
     private ProgramAnalysis(Builder builder) {
         this.programId = builder.programId;
         this.programTitle = builder.programTitle;
@@ -38,6 +39,7 @@ public class ProgramAnalysis {
         this.organizationId = builder.organizationId;
         this.filteredStats = Map.copyOf(builder.filteredStats);
         this.priceCategoryEstimate = builder.priceCategoryEstimate;
+        this.navigatorUrl = builder.navigatorUrl;
         this.success = builder.success;
         this.errorMessage = builder.errorMessage;
     }
@@ -77,7 +79,16 @@ public class ProgramAnalysis {
     public Optional<String> getPriceCategoryEstimate() {
         return Optional.ofNullable(priceCategoryEstimate);
     }
-    
+
+    /**
+     * @return ссылка на страницу программы в "навигаторе" (отдельный сайт,
+     * cabinet.ruobr.ru/navigator/...), либо пусто, если на странице
+     * программы такая ссылка не найдена
+     */
+    public Optional<String> getNavigatorUrl() {
+        return Optional.ofNullable(navigatorUrl);
+    }
+
     public boolean isSuccess() {
         return success;
     }
@@ -95,6 +106,7 @@ public class ProgramAnalysis {
         private String organizationId;
         private Map<String, Integer> filteredStats = new LinkedHashMap<>();
         private String priceCategoryEstimate;
+        private String navigatorUrl;
         private boolean success;
         private String errorMessage;
         
@@ -132,7 +144,12 @@ public class ProgramAnalysis {
             this.priceCategoryEstimate = priceCategoryEstimate;
             return this;
         }
-        
+
+        public Builder navigatorUrl(String navigatorUrl) {
+            this.navigatorUrl = navigatorUrl;
+            return this;
+        }
+
         public Builder success(boolean success) {
             this.success = success;
             return this;

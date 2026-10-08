@@ -26,6 +26,8 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -92,6 +94,7 @@ public class ResultsView extends VBox implements WorkspaceView {
     private final VBox programsPane;
     private final ActionButton backButton;
     private final ActionButton exportButton;
+    private final ActionButton copyButton;
     
     private final DoubleProperty splitRatio = new SimpleDoubleProperty(0.5);
     private SplitMode currentSplitMode = SplitMode.SPLIT;
@@ -185,6 +188,16 @@ public class ResultsView extends VBox implements WorkspaceView {
         exportButton.setGraphic(TablerIcon.onPrimary(TablerIcons.DOWNLOAD, 14));
         exportButton.setOnAction(e -> onExport());
         exportButton.setDisable(true);
+
+        // "Скопировать всё" — весь текст результатов (сводка, показатели,
+        // учреждения, программы) одним куском в буфер обмена, как если бы
+        // пользователь выделил всё это на веб-странице. JavaFX-лейблы не
+        // поддерживают выделение текста мышью как на сайте, поэтому это
+        // единственный способ скопировать всю информацию сразу.
+        copyButton = new ActionButton("Скопировать всё", ActionButton.Style.SECONDARY);
+        copyButton.setGraphic(TablerIcon.of(TablerIcons.COPY, 14));
+        copyButton.setOnAction(e -> onCopyAll());
+        copyButton.setDisable(true);
         
         // Переключатель "какую область показывать" — в том же ряду, что и
         // кнопки "Назад"/"Экспорт", справа от них (их центры на одном
@@ -196,7 +209,7 @@ public class ResultsView extends VBox implements WorkspaceView {
         HBox buttonsRow = new HBox();
         buttonsRow.setAlignment(Pos.CENTER_LEFT);
         buttonsRow.setSpacing(12);
-        buttonsRow.getChildren().addAll(backButton, exportButton, buttonsSpacer, toggleRow);
+        buttonsRow.getChildren().addAll(backButton, exportButton, copyButton, buttonsSpacer, toggleRow);
         
         getChildren().addAll(title, topSection, splitContainer, buttonsRow);
         
@@ -352,6 +365,7 @@ public class ResultsView extends VBox implements WorkspaceView {
     public void setResult(AnalysisResult result) {
         this.currentResult = (result != null && result.isSuccess()) ? result : null;
         exportButton.setDisable(currentResult == null);
+        copyButton.setDisable(currentResult == null);
         
         if (currentResult == null) {
             showPlaceholder();
@@ -549,6 +563,111 @@ public class ResultsView extends VBox implements WorkspaceView {
                 .orElse(null);
     }
     
+    /**
+     * Копирует в буфер обмена весь текст текущих результатов — ровно то,
+     * что сейчас видно на экране (сводку, отмеченные галочками показатели,
+     * обе колонки — учреждения и программы), как если бы пользователь
+     * выделил всё это на веб-странице. Если показателей не отмечено
+     * галочками, в текст попадают только названия строк без значений, как
+     * и на экране (ничего дополнительно "для экспорта" не подставляется).
+     */
+    private void onCopyAll() {
+        if (currentResult == null) {
+            return;
+        }
+
+        String text = buildCopyText();
+        ClipboardContent content = new ClipboardContent();
+        content.putString(text);
+        Clipboard.getSystemClipboard().setContent(content);
+
+        showInfoAlert("Скопировано", "Вся информация со страницы результатов скопирована в буфер обмена.");
+    }
+
+    private String buildCopyText() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Результаты анализа").append(System.lineSeparator());
+        sb.append(summaryLabel.getText()).append(System.lineSeparator());
+        sb.append(System.lineSeparator());
+
+        sb.append("Показатели:").append(System.lineSeparator());
+        for (Map.Entry<String, Integer> entry : currentResult.getFilteredTotals().entrySet()) {
+            if (statPrefs.isVisible(entry.getKey())) {
+                sb.append("  ").append(entry.getKey()).append(": ").append(entry.getValue())
+                        .append(System.lineSeparator());
+            }
+        }
+        for (Map.Entry<String, Integer> entry : currentResult.getOverallTotals().entrySet()) {
+            if (statPrefs.isVisible(entry.getKey())) {
+                sb.append("  ").append(entry.getKey()).append(": ").append(entry.getValue())
+                        .append(System.lineSeparator());
+            }
+        }
+        sb.append(System.lineSeparator());
+
+        sb.append("По учреждениям:").append(System.lineSeparator());
+        for (InstitutionAnalysis institution : currentResult.getInstitutions()) {
+            String displayName = institution.getOrganizationName() != null
+                    ? institution.getOrganizationName()
+                    : institution.getOrganizationId();
+            sb.append("- ").append(displayName).append(System.lineSeparator());
+
+            if (!institution.isSuccess()) {
+                sb.append("    Ошибка: ")
+                        .append(institution.getErrorMessage().orElse("не удалось получить данные"))
+                        .append(System.lineSeparator());
+                continue;
+            }
+
+            StringBuilder statsLine = new StringBuilder();
+            appendSelected(statsLine, currentResult.getFilteredTotals().keySet(), institution.getFilteredStats());
+            if (!institution.getOverallStats().isEmpty()) {
+                appendSelected(statsLine, currentResult.getOverallTotals().keySet(), institution.getOverallStats());
+            }
+            if (statsLine.length() == 0) {
+                statsLine.append(NO_SELECTED_STATS_HINT);
+            }
+            sb.append("    ").append(statsLine).append(System.lineSeparator());
+
+            institution.getOrganizationUrl().ifPresent(url ->
+                    sb.append("    Ссылка: ").append(url).append(System.lineSeparator()));
+        }
+        sb.append(System.lineSeparator());
+
+        sb.append("По программам:").append(System.lineSeparator());
+        for (ProgramAnalysis program : currentResult.getPrograms()) {
+            sb.append("- ").append(program.getProgramTitle()).append(System.lineSeparator());
+            if (program.getOrganizationName() != null) {
+                sb.append("    ").append(program.getOrganizationName()).append(System.lineSeparator());
+            }
+
+            if (!program.isSuccess()) {
+                sb.append("    Ошибка: ")
+                        .append(program.getErrorMessage().orElse("не удалось получить данные"))
+                        .append(System.lineSeparator());
+                continue;
+            }
+
+            program.getPriceCategoryEstimate().ifPresent(category ->
+                    sb.append("    ").append(ProgramAnalysis.PRICE_CATEGORY_LABEL).append(": ").append(category)
+                            .append(System.lineSeparator()));
+
+            StringBuilder statsLine = new StringBuilder();
+            appendSelected(statsLine, programStatKeys, program.getFilteredStats());
+            if (statsLine.length() == 0) {
+                statsLine.append(NO_SELECTED_STATS_HINT);
+            }
+            sb.append("    ").append(statsLine).append(System.lineSeparator());
+
+            program.getProgramUrl().ifPresent(url ->
+                    sb.append("    Ссылка на программу: ").append(url).append(System.lineSeparator()));
+            program.getNavigatorUrl().ifPresent(url ->
+                    sb.append("    Навигатор: ").append(url).append(System.lineSeparator()));
+        }
+
+        return sb.toString();
+    }
+
     private void showInfoAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);

@@ -28,13 +28,19 @@ import java.util.regex.Pattern;
  *       устойчивее к изменениям вёрстки);</li>
  *   <li>сами группы — карточки с классом "mcard", у каждой дата, название
  *       и таблица показателей (модуль, вместимость, сколько сейчас
- *       обучается).</li>
+ *       обучается);</li>
+ *   <li>ссылка на "навигатор" (отдельный сайт, cabinet.ruobr.ru/navigator/...) —
+ *       подпись к ней ("ссылка на навигатор:") генерируется CSS-правилом
+ *       ::before и физически отсутствует в HTML, поэтому ссылку ищем по
+ *       самому адресу (см. {@link #NAVIGATOR_URL_FRAGMENT}), а не по тексту
+ *       рядом с ней — так устойчивее к изменениям вёрстки/оформления.</li>
  * </ul>
  */
 public class ProgramDetailParser {
-    
+
     private static final Logger logger = AppLogger.getLogger();
     private static final Pattern DIGITS = Pattern.compile("(\\d+)");
+    private static final String NAVIGATOR_URL_FRAGMENT = "cabinet.ruobr.ru/navigator";
     
     private ProgramDetailParser() {
         // Утилитарный класс
@@ -51,12 +57,14 @@ public class ProgramDetailParser {
             Map<String, Integer> stats = parseStats(document);
             Integer activeGroupsCount = parseActiveGroupsCount(document);
             List<ProgramGroup> groups = parseGroups(document);
-            
+            String navigatorUrl = parseNavigatorUrl(document);
+
             return ParseResult.builder()
                     .success(true)
                     .stats(stats)
                     .activeGroupsCount(activeGroupsCount)
                     .groups(groups)
+                    .navigatorUrl(navigatorUrl)
                     .build();
                     
         } catch (Exception e) {
@@ -154,6 +162,22 @@ public class ProgramDetailParser {
         return groups;
     }
     
+    /**
+     * Ищет ссылку на "навигатор" по самому адресу ({@value #NAVIGATOR_URL_FRAGMENT}),
+     * а не по подписи рядом с ней — подпись "ссылка на навигатор:" создаётся
+     * CSS-псевдоэлементом ::before и не присутствует в HTML, который видит
+     * Jsoup. Берём первую подходящую ссылку на странице.
+     */
+    private static String parseNavigatorUrl(Document document) {
+        for (Element link : document.select("a[href]")) {
+            String href = link.attr("href");
+            if (href != null && href.contains(NAVIGATOR_URL_FRAGMENT)) {
+                return href.trim();
+            }
+        }
+        return null;
+    }
+
     private static Integer parseNumber(String text) {
         if (text == null) {
             return null;
@@ -176,13 +200,15 @@ public class ProgramDetailParser {
         private final Map<String, Integer> stats;
         private final Integer activeGroupsCount;
         private final List<ProgramGroup> groups;
-        
+        private final String navigatorUrl;
+
         private ParseResult(Builder builder) {
             this.success = builder.success;
             this.errorMessage = builder.errorMessage;
             this.stats = Map.copyOf(builder.stats);
             this.activeGroupsCount = builder.activeGroupsCount;
             this.groups = List.copyOf(builder.groups);
+            this.navigatorUrl = builder.navigatorUrl;
         }
         
         public static Builder builder() {
@@ -208,14 +234,19 @@ public class ProgramDetailParser {
         public List<ProgramGroup> getGroups() {
             return groups;
         }
-        
+
+        public Optional<String> getNavigatorUrl() {
+            return Optional.ofNullable(navigatorUrl);
+        }
+
         public static class Builder {
-            
+
             private boolean success;
             private String errorMessage;
             private Map<String, Integer> stats = new LinkedHashMap<>();
             private Integer activeGroupsCount;
             private List<ProgramGroup> groups = new ArrayList<>();
+            private String navigatorUrl;
             
             public Builder success(boolean success) {
                 this.success = success;
@@ -241,7 +272,12 @@ public class ProgramDetailParser {
                 this.groups = new ArrayList<>(groups);
                 return this;
             }
-            
+
+            public Builder navigatorUrl(String navigatorUrl) {
+                this.navigatorUrl = navigatorUrl;
+                return this;
+            }
+
             public ParseResult build() {
                 return new ParseResult(this);
             }

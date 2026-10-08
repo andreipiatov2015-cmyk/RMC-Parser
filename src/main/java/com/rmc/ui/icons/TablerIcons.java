@@ -42,6 +42,10 @@ public final class TablerIcons {
             + "a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37"
             + "c1 .608 2.296 .07 2.572 -1.065 M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0";
     
+    public static final String COPY =
+            "M8 8m0 2a2 2 0 0 1 2 -2h9a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-9a2 2 0 0 1 -2 -2z "
+            + "M16 8v-2a2 2 0 0 0 -2 -2h-9a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h2";
+
     public static final String CHEVRON_RIGHT = "M9 6l6 6l-6 6";
     
     public static final String CHEVRON_LEFT = "M15 6l-6 6l6 6";
