@@ -123,6 +123,12 @@ public class ExportService {
             setCell(row, 1, entry.getValue());
         }
 
+        for (Map.Entry<String, Long> entry : result.getConfirmedHoursByPeriod().entrySet()) {
+            Row row = sheet.createRow(rowIdx++);
+            setCell(row, 0, "Подтверждённых часов за " + entry.getKey());
+            setCell(row, 1, entry.getValue());
+        }
+
         autoSizeColumns(sheet, 2);
     }
 

@@ -76,6 +76,19 @@ public class CooperateAnalysisResult {
         return territoryStats;
     }
 
+    /**
+     * @return подтверждённые часы по годам (периодам), по возрастанию года:
+     * один элемент, если в результатах один год, несколько — если
+     * несколько (или фильтр по году не выбран)
+     */
+    public Map<String, Long> getConfirmedHoursByPeriod() {
+        Map<String, Long> byPeriod = new java.util.TreeMap<>();
+        for (CooperateTerritoryStat stat : territoryStats) {
+            byPeriod.merge(stat.getPeriod(), stat.getConfirmedHours(), Long::sum);
+        }
+        return byPeriod;
+    }
+
     public Optional<String> getErrorMessage() {
         return Optional.ofNullable(errorMessage);
     }

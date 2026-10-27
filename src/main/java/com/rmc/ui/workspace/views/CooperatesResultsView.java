@@ -163,7 +163,11 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
 
         totalsPane.getChildren().clear();
         for (Map.Entry<String, Integer> entry : currentResult.getStatusTotals().entrySet()) {
-            totalsPane.getChildren().add(createStatCard(entry.getKey(), entry.getValue()));
+            totalsPane.getChildren().add(createStatCard(entry.getKey(), String.valueOf(entry.getValue())));
+        }
+        for (Map.Entry<String, Long> entry : currentResult.getConfirmedHoursByPeriod().entrySet()) {
+            totalsPane.getChildren().add(createStatCard(
+                    yearHoursLabel(entry.getKey()), String.valueOf(entry.getValue())));
         }
 
         territoriesList.getChildren().clear();
@@ -219,16 +223,20 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
         return sb.toString();
     }
 
-    private Node createStatCard(String label, int value) {
+    private static String yearHoursLabel(String period) {
+        return "Подтверждённых часов за " + period + (period.matches("\\d+") ? " год" : "");
+    }
+
+    private Node createStatCard(String label, String value) {
         VBox card = new VBox();
         card.getStyleClass().add("results-stat-card");
         card.setAlignment(Pos.CENTER);
         card.setSpacing(2);
         card.setPadding(new Insets(10, 14, 10, 14));
 
-        TextField valueField = SelectableText.field(String.valueOf(value), "results-stat-value", "results-stat-card-field");
+        TextField valueField = SelectableText.field(value, "results-stat-value", "results-stat-card-field");
         valueField.setAlignment(Pos.CENTER);
-        valueField.setPrefColumnCount(Math.max(2, String.valueOf(value).length()));
+        valueField.setPrefColumnCount(Math.max(2, value.length()));
 
         TextField nameField = SelectableText.field(label, "results-stat-label", "results-stat-card-field");
         nameField.setAlignment(Pos.CENTER);
@@ -333,6 +341,10 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
         sb.append(System.lineSeparator());
 
         sb.append("Показатели:").append(System.lineSeparator());
+        for (Map.Entry<String, Long> entry : currentResult.getConfirmedHoursByPeriod().entrySet()) {
+            sb.append("  ").append(yearHoursLabel(entry.getKey())).append(": ").append(entry.getValue())
+                    .append(System.lineSeparator());
+        }
         for (Map.Entry<String, Integer> entry : currentResult.getStatusTotals().entrySet()) {
             sb.append("  ").append(entry.getKey()).append(": ").append(entry.getValue())
                     .append(System.lineSeparator());
