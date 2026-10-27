@@ -9,7 +9,7 @@ import javafx.animation.Timeline;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
@@ -85,32 +85,42 @@ public class SectionSwitcher extends HBox {
      */
     private static final class Pill extends HBox {
 
-        private final Pane textClip;
+        /** Высота пилюли — та же, что и у соседних значков TopBar (топбар-иконка:
+         *  16px иконка + 8px отступ сверху/снизу = 32px). Фиксированная высота,
+         *  а не "по содержимому" — иначе текст внутри тянул бы пилюлю выше. */
+        private static final double HEIGHT = 32;
+
+        private final StackPane textClip;
         private final double naturalTextWidth;
         private boolean active;
         private Runnable onAction;
 
         Pill(String iconPath, String text) {
             getStyleClass().add("section-switcher-pill");
-            setAlignment(Pos.CENTER_LEFT);
+            setAlignment(Pos.CENTER);
+            setPrefHeight(HEIGHT);
+            setMinHeight(HEIGHT);
+            setMaxHeight(HEIGHT);
 
             Label icon = new Label();
-            icon.setGraphic(TablerIcon.of(iconPath, 16));
+            icon.setGraphic(TablerIcon.of(iconPath, 14));
             icon.getStyleClass().add("section-switcher-icon");
 
             Label textLabel = new Label(text);
             textLabel.getStyleClass().add("section-switcher-text");
-            textLabel.setLayoutX(6);
 
             // Естественная ширина надписи — считаем один раз через
             // временный Text (тот же приём, что и в SelectableText для
             // авто-высоты TextArea), а не через layoutBounds самого
             // Label, которые до первого прохода layout не готовы.
             Text measurer = new Text(text);
-            measurer.setFont(Font.font(13));
-            this.naturalTextWidth = measurer.getLayoutBounds().getWidth() + 6 + 10;
+            measurer.setFont(Font.font(12));
+            this.naturalTextWidth = measurer.getLayoutBounds().getWidth() + 6;
 
-            textClip = new Pane(textLabel);
+            // StackPane, а не Pane — чтобы надпись была по центру ПО
+            // ВЫСОТЕ пилюли автоматически, без ручного позиционирования.
+            textClip = new StackPane(textLabel);
+            textClip.setAlignment(Pos.CENTER_LEFT);
             textClip.setMinWidth(0);
             textClip.setPrefWidth(0);
             textClip.setMaxWidth(0);

@@ -1096,8 +1096,8 @@
     -fx-cursor: hand;
     -fx-background-color: #F0F4F8;
     -fx-background-radius: 16;
-    -fx-padding: 6 8 6 8;
-    -fx-alignment: center-left;
+    -fx-padding: 0 9 0 9;
+    -fx-alignment: center;
 }
 
 .section-switcher-pill:hover {
@@ -1121,7 +1121,7 @@
 }
 
 .section-switcher-text {
-    -fx-font-size: 13px;
+    -fx-font-size: 12px;
     -fx-text-fill: #24292F;
     -fx-padding: 0 0 0 6;
 }
