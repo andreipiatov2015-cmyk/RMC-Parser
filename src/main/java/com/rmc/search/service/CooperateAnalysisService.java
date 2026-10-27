@@ -135,13 +135,14 @@ public class CooperateAnalysisService {
                 case REJECTED -> rejectedCount++;
                 default -> unknownCount++;
             }
-            cooperate.getConfirmedHours().ifPresent(hours -> {
+            String hours = cooperate.getConfirmedHours().orElse(null);
+            if (hours != null) {
                 try {
                     confirmedHoursSum += Long.parseLong(hours.trim());
                 } catch (NumberFormatException ignored) {
                     // неразбираемое значение часов пропускаем, не ломая подсчёт
                 }
-            });
+            }
         }
 
         if (newCount > 0) {
