@@ -26,6 +26,7 @@ public class CooperateAnalysisResult {
     private final int totalCooperates;
     private final Map<String, Integer> statusTotals;
     private final List<Cooperate> cooperates;
+    private final List<CooperateTerritoryStat> territoryStats;
     private final String errorMessage;
 
     private CooperateAnalysisResult(Builder builder) {
@@ -34,6 +35,7 @@ public class CooperateAnalysisResult {
         this.totalCooperates = builder.totalCooperates;
         this.statusTotals = Map.copyOf(builder.statusTotals);
         this.cooperates = List.copyOf(builder.cooperates);
+        this.territoryStats = List.copyOf(CooperateTerritoryStat.compute(builder.cooperates));
         this.errorMessage = builder.errorMessage;
     }
 
@@ -64,6 +66,14 @@ public class CooperateAnalysisResult {
 
     public List<Cooperate> getCooperates() {
         return cooperates;
+    }
+
+    /**
+     * @return сводка по территориям и периодам (годам): сколько всего заявок
+     * и часов в каждой территории за каждый год
+     */
+    public List<CooperateTerritoryStat> getTerritoryStats() {
+        return territoryStats;
     }
 
     public Optional<String> getErrorMessage() {

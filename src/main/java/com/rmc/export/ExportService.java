@@ -4,6 +4,7 @@ import com.rmc.logging.AppLogger;
 import com.rmc.parser.model.Cooperate;
 import com.rmc.search.model.AnalysisResult;
 import com.rmc.search.model.CooperateAnalysisResult;
+import com.rmc.search.model.CooperateTerritoryStat;
 import com.rmc.search.model.InstitutionAnalysis;
 import com.rmc.search.model.ProgramAnalysis;
 import org.apache.poi.common.usermodel.HyperlinkType;
@@ -92,6 +93,7 @@ public class ExportService {
             CellStyle headerStyle = createHeaderStyle(workbook);
 
             writeCooperatesSummarySheet(workbook, headerStyle, result);
+            writeCooperatesTerritorySheet(workbook, headerStyle, result);
             writeCooperatesSheet(workbook, headerStyle, result);
 
             try (FileOutputStream out = new FileOutputStream(file)) {
@@ -122,6 +124,35 @@ public class ExportService {
         }
 
         autoSizeColumns(sheet, 2);
+    }
+
+    private static void writeCooperatesTerritorySheet(Workbook workbook, CellStyle headerStyle,
+                                                        CooperateAnalysisResult result) {
+        Sheet sheet = workbook.createSheet("По территориям");
+        int rowIdx = 0;
+
+        Row header = sheet.createRow(rowIdx++);
+        String[] titles = {"Территория", "Период", "Заявок всего", "Новые", "Подтверждённые",
+                "Отклонённые", "Статус не определён", "Макс. часов", "Подтверждённых часов"};
+        for (int i = 0; i < titles.length; i++) {
+            setCell(header, i, titles[i], headerStyle);
+        }
+
+        for (CooperateTerritoryStat stat : result.getTerritoryStats()) {
+            Row row = sheet.createRow(rowIdx++);
+            int col = 0;
+            setCell(row, col++, stat.getTerritory());
+            setCell(row, col++, stat.getPeriod());
+            setCell(row, col++, stat.getTotal());
+            setCell(row, col++, stat.getNewCount());
+            setCell(row, col++, stat.getConfirmedCount());
+            setCell(row, col++, stat.getRejectedCount());
+            setCell(row, col++, stat.getUnknownCount());
+            setCell(row, col++, stat.getMaxHours());
+            setCell(row, col, stat.getConfirmedHours());
+        }
+
+        autoSizeColumns(sheet, titles.length);
     }
 
     private static void writeCooperatesSheet(Workbook workbook, CellStyle headerStyle,
@@ -408,6 +439,11 @@ public class ExportService {
     private static void setCell(Row row, int col, int value) {
         Cell cell = row.createCell(col);
         cell.setCellValue(value);
+    }
+    
+    private static void setCell(Row row, int col, long value) {
+        Cell cell = row.createCell(col);
+        cell.setCellValue((double) value);
     }
     
     private static void setCell(Row row, int col, String textValue, CellStyle style) {

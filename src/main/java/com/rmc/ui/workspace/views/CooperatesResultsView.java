@@ -4,6 +4,7 @@ import com.rmc.export.ExportService;
 import com.rmc.logging.AppLogger;
 import com.rmc.parser.model.Cooperate;
 import com.rmc.search.model.CooperateAnalysisResult;
+import com.rmc.search.model.CooperateTerritoryStat;
 import com.rmc.ui.icons.TablerIcon;
 import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
@@ -54,6 +55,7 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
     private final TextField summaryLabel;
     private final FlowPane totalsPane;
     private final VBox cooperatesList;
+    private final VBox territoriesList;
     private final ActionButton backButton;
     private final ActionButton exportButton;
     private final ActionButton copyButton;
@@ -102,6 +104,28 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
         listScroll.getStyleClass().add("filters-scroll");
         VBox.setVgrow(listScroll, Priority.ALWAYS);
 
+        territoriesList = new VBox();
+        territoriesList.setSpacing(8);
+        territoriesList.setPadding(new Insets(8, 0, 8, 0));
+
+        ScrollPane territoriesScroll = new ScrollPane(territoriesList);
+        territoriesScroll.setFitToWidth(true);
+        territoriesScroll.getStyleClass().add("filters-scroll");
+        VBox.setVgrow(territoriesScroll, Priority.ALWAYS);
+
+        // Слева — сводка по территориям (общие цифры за год), справа —
+        // подробный список заявок; та же схема "две панели", что и в
+        // Реестре программ.
+        VBox territoriesPane = buildPane("По территориям", territoriesScroll);
+        VBox cooperatesPane = buildPane("Заявки", listScroll);
+        HBox panes = new HBox(12, territoriesPane, cooperatesPane);
+        territoriesPane.setPrefWidth(0);
+        cooperatesPane.setPrefWidth(0);
+        HBox.setHgrow(territoriesPane, Priority.ALWAYS);
+        HBox.setHgrow(cooperatesPane, Priority.ALWAYS);
+        territoriesPane.maxWidthProperty().bind(panes.widthProperty().multiply(0.42));
+        VBox.setVgrow(panes, Priority.ALWAYS);
+
         backButton = new ActionButton("Назад к фильтрам", ActionButton.Style.SECONDARY);
         backButton.setGraphic(TablerIcon.of(TablerIcons.ARROW_LEFT, 14));
         backButton.setOnAction(e -> container.showCooperatesSection());
@@ -119,7 +143,7 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
         HBox buttonsRow = new HBox(12, backButton, exportButton, copyButton);
         buttonsRow.setAlignment(Pos.CENTER_LEFT);
 
-        getChildren().addAll(title, topSection, listScroll, buttonsRow);
+        getChildren().addAll(title, topSection, panes, buttonsRow);
 
         showPlaceholder();
     }
@@ -142,6 +166,11 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
             totalsPane.getChildren().add(createStatCard(entry.getKey(), entry.getValue()));
         }
 
+        territoriesList.getChildren().clear();
+        for (CooperateTerritoryStat stat : currentResult.getTerritoryStats()) {
+            territoriesList.getChildren().add(createTerritoryRow(stat));
+        }
+
         cooperatesList.getChildren().clear();
         for (Cooperate cooperate : currentResult.getCooperates()) {
             cooperatesList.getChildren().add(createCooperateRow(cooperate));
@@ -151,7 +180,43 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
     private void showPlaceholder() {
         summaryLabel.setText("Результаты появятся после завершения анализа");
         totalsPane.getChildren().clear();
+        territoriesList.getChildren().clear();
         cooperatesList.getChildren().clear();
+    }
+
+    private VBox buildPane(String titleText, ScrollPane scroll) {
+        Label header = new Label(titleText);
+        header.getStyleClass().add("filter-section-title");
+        VBox pane = new VBox(8, header, scroll);
+        pane.getStyleClass().add("results-split-pane");
+        pane.setPadding(new Insets(8));
+        return pane;
+    }
+
+    private Node createTerritoryRow(CooperateTerritoryStat stat) {
+        VBox row = new VBox();
+        row.getStyleClass().add("results-institution-row");
+        row.setSpacing(4);
+        row.setPadding(new Insets(10, 12, 10, 12));
+
+        row.getChildren().add(SelectableText.field(
+                stat.getTerritory() + "  —  " + stat.getPeriod(), "results-institution-name"));
+        row.getChildren().add(SelectableText.area(territoryStatsLine(stat), "results-institution-stats"));
+        return row;
+    }
+
+    private static String territoryStatsLine(CooperateTerritoryStat stat) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Заявок всего: ").append(stat.getTotal());
+        sb.append("   Подтверждено: ").append(stat.getConfirmedCount());
+        sb.append("   Новых: ").append(stat.getNewCount());
+        sb.append("   Отклонено: ").append(stat.getRejectedCount());
+        if (stat.getUnknownCount() > 0) {
+            sb.append("   Статус не определён: ").append(stat.getUnknownCount());
+        }
+        sb.append("   Макс. часов: ").append(stat.getMaxHours());
+        sb.append("   Подтверждённых часов: ").append(stat.getConfirmedHours());
+        return sb.toString();
     }
 
     private Node createStatCard(String label, int value) {
@@ -271,6 +336,14 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
         for (Map.Entry<String, Integer> entry : currentResult.getStatusTotals().entrySet()) {
             sb.append("  ").append(entry.getKey()).append(": ").append(entry.getValue())
                     .append(System.lineSeparator());
+        }
+        sb.append(System.lineSeparator());
+
+        sb.append("По территориям:").append(System.lineSeparator());
+        for (CooperateTerritoryStat stat : currentResult.getTerritoryStats()) {
+            sb.append("- ").append(stat.getTerritory()).append(" — ").append(stat.getPeriod())
+                    .append(System.lineSeparator());
+            sb.append("    ").append(territoryStatsLine(stat)).append(System.lineSeparator());
         }
         sb.append(System.lineSeparator());
 
