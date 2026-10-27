@@ -320,17 +320,26 @@ public class FilterParser {
             String label = option.text().trim();
             boolean selected = option.hasAttr("selected");
             boolean optionDisabled = option.hasAttr("disabled");
-            
-            // Если value пустой, используем текст
-            if (value.isEmpty()) {
+
+            // Если атрибут value вообще отсутствует (грубая/старая вёрстка
+            // вида <option>Текст</option>), используем текст как значение.
+            // ВАЖНО: это не то же самое, что value="" — пустое значение с
+            // явным атрибутом обычно означает "ничего не выбрано" (Django
+            // так помечает пустой/заглушечный пункт вроде "--------", и
+            // нередко сразу помечает его же selected="selected" по
+            // умолчанию) — такое value нужно оставить пустым, а не
+            // подставлять туда текст заглушки: иначе подпись вроде
+            // "--------" уходит на сервер как будто это реальное значение
+            // фильтра и сайт отвечает ошибкой 500.
+            if (!option.hasAttr("value")) {
                 value = label;
             }
-            
+
             // Если label пустой, используем value
             if (label.isEmpty()) {
                 label = value;
             }
-            
+
             options.add(FilterOption.builder()
                     .value(value)
                     .label(label)
@@ -338,14 +347,17 @@ public class FilterParser {
                     .disabled(optionDisabled)
                     .build());
         }
-        
-        // Получаем текущее выбранное значение
+
+        // Получаем текущее выбранное значение — та же оговорка про
+        // value="" с явным атрибутом, что и выше: это "ничего не выбрано",
+        // а не повод подставить текст заглушки.
         String currentValue = null;
         Elements selectedOptions = select.select("option[selected]");
         if (!selectedOptions.isEmpty()) {
-            currentValue = selectedOptions.first().attr("value");
-            if (currentValue.isEmpty()) {
-                currentValue = selectedOptions.first().text().trim();
+            Element selectedOption = selectedOptions.first();
+            currentValue = selectedOption.attr("value");
+            if (currentValue.isEmpty() && !selectedOption.hasAttr("value")) {
+                currentValue = selectedOption.text().trim();
             }
         }
         
