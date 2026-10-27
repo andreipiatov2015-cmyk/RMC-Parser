@@ -1087,6 +1087,45 @@
     -fx-font-size: 14px;
 }
 
+/* ========== Top Bar: переключатель раздела (Реестр программ / Соглашения) ========== */
+.section-switcher {
+    -fx-alignment: center-left;
+}
+
+.section-switcher-pill {
+    -fx-cursor: hand;
+    -fx-background-color: #F0F4F8;
+    -fx-background-radius: 16;
+    -fx-padding: 6 8 6 8;
+    -fx-alignment: center-left;
+}
+
+.section-switcher-pill:hover {
+    -fx-background-color: #E2E9F0;
+}
+
+.section-switcher-pill-active {
+    -fx-background-color: #0969DA;
+}
+
+.section-switcher-pill-active .tabler-icon {
+    -fx-stroke: #FFFFFF;
+}
+
+.section-switcher-pill-active .section-switcher-text {
+    -fx-text-fill: #FFFFFF;
+}
+
+.section-switcher-icon {
+    -fx-padding: 0;
+}
+
+.section-switcher-text {
+    -fx-font-size: 13px;
+    -fx-text-fill: #24292F;
+    -fx-padding: 0 0 0 6;
+}
+
 /* ========== Dashboard: свёрнутая полоска + заголовок с кнопками ========== */
 .dashboard-rail-button {
     -fx-font-size: 14px;

@@ -8,6 +8,8 @@ import com.rmc.filters.parser.FilterParser;
 import com.rmc.history.SearchHistoryService;
 import com.rmc.http.HttpClientService;
 import com.rmc.search.model.AnalysisResult;
+import com.rmc.search.model.CooperateAnalysisResult;
+import com.rmc.search.service.CooperateAnalysisService;
 import com.rmc.search.service.ProgramAnalysisService;
 import com.rmc.search.service.ProgramSearchService;
 import com.rmc.state.ApplicationState;
@@ -39,14 +41,21 @@ public class WorkspaceContainer extends StackPane {
     private final FavoritesView favoritesView;
     private final InstitutionDetailView institutionDetailView;
     private final RmcAiView rmcAiView;
-    
+    private final FiltersView cooperatesFiltersView;
+    private final CooperatesResultsView cooperatesResultsView;
+
     // References
     private Dashboard dashboard;
     private StatusBar statusBar;
-    
+
     // Previous state for retry
     private WorkspaceState previousState;
-    
+
+    // Фильтры "Соглашения" загружаются только один раз за сессию, при
+    // первом переходе на этот раздел — повторный переход просто показывает
+    // уже готовый экран, без повторного похода на сайт.
+    private boolean cooperatesFiltersLoaded = false;
+
     public WorkspaceContainer() {
         getStyleClass().add("workspace");
         setPadding(new Insets(16));
@@ -61,7 +70,9 @@ public class WorkspaceContainer extends StackPane {
         favoritesView = new FavoritesView(this);
         institutionDetailView = new InstitutionDetailView(this);
         rmcAiView = new RmcAiView(this);
-        
+        cooperatesFiltersView = new FiltersView("Параметры поиска — Соглашения", this::runCooperatesAnalysis);
+        cooperatesResultsView = new CooperatesResultsView(this);
+
         // Начинаем с выбора аккаунта, если есть сохранённые, иначе — с формы входа
         if (AccountPickerView.hasSavedAccounts()) {
             currentState = WorkspaceState.ACCOUNT_PICKER;
@@ -145,6 +156,10 @@ public class WorkspaceContainer extends StackPane {
             case FAVORITES -> favoritesView;
             case INSTITUTION_DETAIL -> institutionDetailView;
             case RMC_AI -> rmcAiView;
+            case COOPERATES_LOADING_FILTERS -> loadingView;
+            case COOPERATES_FILTERS_READY -> cooperatesFiltersView;
+            case COOPERATES_ANALYZING -> loadingView;
+            case COOPERATES_RESULTS -> cooperatesResultsView;
             case ERROR -> errorView;
         };
     }
@@ -378,7 +393,133 @@ public class WorkspaceContainer extends StackPane {
     public void onBackToFilters() {
         transitionTo(WorkspaceState.FILTERS_READY);
     }
-    
+
+    /**
+     * Перейти на экран "Реестр программ" (используется кнопками "Назад к
+     * фильтрам" на экранах раздела "Соглашения", и переключателем-пилюлей
+     * в TopBar).
+     */
+    public void showRegistryHome() {
+        transitionTo(WorkspaceState.FILTERS_READY);
+    }
+
+    /**
+     * Перейти на раздел "Соглашения" (/cooperates/) — зеркало реестра
+     * программ с собственными фильтрами. Фильтры загружаются с сайта
+     * только при первом переходе за сессию; повторные переходы просто
+     * показывают уже готовый экран.
+     */
+    public void showCooperatesSection() {
+        if (cooperatesFiltersLoaded) {
+            transitionTo(WorkspaceState.COOPERATES_FILTERS_READY);
+            return;
+        }
+
+        transitionTo(WorkspaceState.COOPERATES_LOADING_FILTERS);
+
+        new Thread(() -> {
+            try {
+                HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
+
+                FilterPageLoader loader = FilterPageLoader.builder()
+                        .httpClient(httpClient)
+                        .baseUrl(ServerConfig.BASE_URL)
+                        .path("cooperates/")
+                        .build();
+
+                FilterPageResult pageResult = loader.load();
+
+                if (!pageResult.isSuccess()) {
+                    javafx.application.Platform.runLater(() ->
+                            onCooperatesFiltersLoadFailed(pageResult.getErrorMessage()
+                                    .orElse("Не удалось загрузить страницу фильтров")));
+                    return;
+                }
+
+                FilterParser.ParseResult parseResult = FilterParser.parse(pageResult.getHtml());
+
+                if (!parseResult.isSuccess()) {
+                    javafx.application.Platform.runLater(() ->
+                            onCooperatesFiltersLoadFailed(parseResult.getErrorMessage()
+                                    .orElse("Не удалось разобрать фильтры")));
+                    return;
+                }
+
+                List<FilterGroup> groups = parseResult.getGroups();
+
+                javafx.application.Platform.runLater(() -> onCooperatesFiltersLoaded(groups));
+
+            } catch (Exception e) {
+                javafx.application.Platform.runLater(() ->
+                        onCooperatesFiltersLoadFailed("Ошибка: " + e.getMessage()));
+            }
+        }).start();
+    }
+
+    private void onCooperatesFiltersLoaded(List<FilterGroup> groups) {
+        cooperatesFiltersLoaded = true;
+        transitionTo(WorkspaceState.COOPERATES_FILTERS_READY,
+                () -> cooperatesFiltersView.setFilters(groups));
+    }
+
+    private void onCooperatesFiltersLoadFailed(String error) {
+        transitionTo(WorkspaceState.ERROR,
+                () -> ((ErrorView) currentView).setError("Ошибка загрузки фильтров «Соглашения»: " + error));
+    }
+
+    /**
+     * Запускает анализ раздела "Соглашения" по готовой query-строке
+     * фильтров — аналог {@link #runAnalysis(String, List)} для реестра
+     * программ, но проще: данные уже полностью есть в самой таблице
+     * списка, без захода на отдельные страницы заявок.
+     */
+    public void runCooperatesAnalysis(String queryString, List<String> filterSummary) {
+        transitionTo(WorkspaceState.COOPERATES_ANALYZING);
+
+        java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean(false);
+        loadingView.setCancellable(true, () -> cancelled.set(true));
+        loadingView.resetProgress();
+
+        new Thread(() -> {
+            try {
+                HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
+                ProgramSearchService searchService = ProgramSearchService.builder()
+                        .httpClient(httpClient)
+                        .build();
+                CooperateAnalysisService analysisService = CooperateAnalysisService.builder()
+                        .baseUrl(ServerConfig.BASE_URL)
+                        .searchService(searchService)
+                        .build();
+
+                CooperateAnalysisResult result = analysisService.analyze(queryString,
+                        (status, current, total) -> javafx.application.Platform.runLater(
+                                () -> updateProgress(status, current, total)),
+                        cancelled::get);
+
+                javafx.application.Platform.runLater(() -> {
+                    if (result.isSuccess()) {
+                        onCooperatesAnalysisComplete(result);
+                    } else {
+                        onCooperatesAnalysisFailed(result.getErrorMessage().orElse("Неизвестная ошибка анализа"));
+                    }
+                });
+            } catch (Exception e) {
+                javafx.application.Platform.runLater(() ->
+                        onCooperatesAnalysisFailed("Ошибка: " + e.getMessage()));
+            }
+        }).start();
+    }
+
+    private void onCooperatesAnalysisComplete(CooperateAnalysisResult result) {
+        transitionTo(WorkspaceState.COOPERATES_RESULTS,
+                () -> cooperatesResultsView.setResult(result));
+    }
+
+    private void onCooperatesAnalysisFailed(String error) {
+        transitionTo(WorkspaceState.ERROR,
+                () -> ((ErrorView) currentView).setError("Ошибка анализа «Соглашения»: " + error));
+    }
+
     public WorkspaceState getCurrentState() {
         return currentState;
     }

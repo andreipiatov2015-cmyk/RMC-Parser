@@ -30,7 +30,19 @@ public enum WorkspaceState {
     
     /** RMCAI — чат с нейросетью по данным сайта */
     RMC_AI,
-    
+
+    /** Загрузка страницы фильтров раздела "Соглашения" (/cooperates/) */
+    COOPERATES_LOADING_FILTERS,
+
+    /** Фильтры "Соглашения" загружены, можно настраивать и запускать анализ */
+    COOPERATES_FILTERS_READY,
+
+    /** Выполняется анализ раздела "Соглашения" */
+    COOPERATES_ANALYZING,
+
+    /** Показ результатов анализа раздела "Соглашения" */
+    COOPERATES_RESULTS,
+
     /** Error occurred */
     ERROR
 }

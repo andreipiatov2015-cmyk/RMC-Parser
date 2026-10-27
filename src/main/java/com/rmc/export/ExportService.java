@@ -1,7 +1,9 @@
 package com.rmc.export;
 
 import com.rmc.logging.AppLogger;
+import com.rmc.parser.model.Cooperate;
 import com.rmc.search.model.AnalysisResult;
+import com.rmc.search.model.CooperateAnalysisResult;
 import com.rmc.search.model.InstitutionAnalysis;
 import com.rmc.search.model.ProgramAnalysis;
 import org.apache.poi.common.usermodel.HyperlinkType;
@@ -78,6 +80,107 @@ public class ExportService {
         logger.info("Экспорт завершён: {}", file.getAbsolutePath());
     }
     
+    /**
+     * Экспорт результата анализа раздела "Соглашения" в Excel (.xlsx).
+     * Формирует два листа: "Итого" (сводка по статусам заявок) и
+     * "Соглашения" (построчная разбивка по каждой заявке).
+     */
+    public static void exportCooperatesToExcel(CooperateAnalysisResult result, File file) throws IOException {
+        logger.info("Экспорт результатов анализа соглашений в Excel: {}", file.getAbsolutePath());
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            CellStyle headerStyle = createHeaderStyle(workbook);
+
+            writeCooperatesSummarySheet(workbook, headerStyle, result);
+            writeCooperatesSheet(workbook, headerStyle, result);
+
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                workbook.write(out);
+            }
+        }
+
+        logger.info("Экспорт завершён: {}", file.getAbsolutePath());
+    }
+
+    private static void writeCooperatesSummarySheet(Workbook workbook, CellStyle headerStyle,
+                                                      CooperateAnalysisResult result) {
+        Sheet sheet = workbook.createSheet("Итого");
+        int rowIdx = 0;
+
+        Row header = sheet.createRow(rowIdx++);
+        setCell(header, 0, "Показатель", headerStyle);
+        setCell(header, 1, "Значение", headerStyle);
+
+        Row totalRow = sheet.createRow(rowIdx++);
+        setCell(totalRow, 0, "Найдено заявок");
+        setCell(totalRow, 1, result.getTotalCooperates());
+
+        for (Map.Entry<String, Integer> entry : result.getStatusTotals().entrySet()) {
+            Row row = sheet.createRow(rowIdx++);
+            setCell(row, 0, entry.getKey());
+            setCell(row, 1, entry.getValue());
+        }
+
+        autoSizeColumns(sheet, 2);
+    }
+
+    private static void writeCooperatesSheet(Workbook workbook, CellStyle headerStyle,
+                                               CooperateAnalysisResult result) {
+        Sheet sheet = workbook.createSheet("Соглашения");
+        CreationHelper creationHelper = workbook.getCreationHelper();
+        CellStyle linkStyle = createLinkStyle(workbook);
+
+        int rowIdx = 0;
+        Row header = sheet.createRow(rowIdx++);
+        int col = 0;
+        setCell(header, col++, "Дата", headerStyle);
+        setCell(header, col++, "Уполномоченный орган", headerStyle);
+        setCell(header, col++, "Муниципалитет органа", headerStyle);
+        setCell(header, col++, "Учреждение", headerStyle);
+        setCell(header, col++, "Ссылка на учреждение", headerStyle);
+        setCell(header, col++, "Муниципалитет учреждения", headerStyle);
+        setCell(header, col++, "Министерство", headerStyle);
+        setCell(header, col++, "Период", headerStyle);
+        setCell(header, col++, "Статус", headerStyle);
+        setCell(header, col++, "Макс. часов соглашения", headerStyle);
+        setCell(header, col, "Подтверждённых часов", headerStyle);
+
+        for (Cooperate cooperate : result.getCooperates()) {
+            Row row = sheet.createRow(rowIdx++);
+            col = 0;
+
+            setCell(row, col++, cooperate.getDate().orElse(""));
+            setCell(row, col++, cooperate.getPayerName().orElse(""));
+            setCell(row, col++, cooperate.getPayerTerritory().orElse(""));
+            setCell(row, col++, cooperate.getSchoolName().orElse(""));
+
+            Optional<String> schoolUrl = cooperate.getSchoolUrl();
+            if (schoolUrl.isPresent()) {
+                col = writeHyperlinkCell(row, col, creationHelper, linkStyle, schoolUrl.get());
+            } else {
+                setCell(row, col++, "");
+            }
+
+            setCell(row, col++, cooperate.getSchoolTerritory().orElse(""));
+            setCell(row, col++, cooperate.getSchoolMinistry().orElse(""));
+            setCell(row, col++, cooperate.getPeriod().orElse(""));
+            setCell(row, col++, cooperate.getStatusText().orElse(statusFallbackText(cooperate)));
+            setCell(row, col++, cooperate.getMaxHours().orElse(""));
+            setCell(row, col, cooperate.getConfirmedHours().orElse(""));
+        }
+
+        autoSizeColumns(sheet, 11);
+    }
+
+    private static String statusFallbackText(Cooperate cooperate) {
+        return switch (cooperate.getStatus()) {
+            case NEW -> "новая заявка";
+            case CONFIRMED -> "подтверждена";
+            case REJECTED -> "отклонена";
+            case UNKNOWN -> "";
+        };
+    }
+
     private static void writeSummarySheet(Workbook workbook, CellStyle headerStyle, AnalysisResult result,
                                            Set<String> visibleStats) {
         Sheet sheet = workbook.createSheet("Итого");

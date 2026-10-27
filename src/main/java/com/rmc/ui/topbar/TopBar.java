@@ -38,6 +38,7 @@ import javafx.scene.shape.Circle;
 public class TopBar extends HBox {
     
     private final Label titleLabel;
+    private final SectionSwitcher sectionSwitcher;
     private final Label favoritesButton;
     private final Label rmcAiButton;
     private final Label themeButton;
@@ -45,7 +46,7 @@ public class TopBar extends HBox {
     private final Label userNameLabel;
     private final HBox userBlock;
     private final ContextMenu userMenu;
-    
+
     private Runnable onSwitchUser;
     private Runnable onLogoutConfirmed;
     private Runnable onShowFavorites;
@@ -59,7 +60,13 @@ public class TopBar extends HBox {
         
         titleLabel = new Label("RMC Framework");
         titleLabel.getStyleClass().add("title-label");
-        
+
+        // Переключатель раздела — "Реестр программ" (нынешняя
+        // функциональность) / "Соглашения" (новый раздел /cooperates/),
+        // рядом с заголовком программы.
+        sectionSwitcher = new SectionSwitcher();
+        HBox.setMargin(sectionSwitcher, new Insets(0, 0, 0, 16));
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         
@@ -123,7 +130,7 @@ public class TopBar extends HBox {
         userMenu = new ContextMenu(logoutItem, switchUserItem, settingsItem);
         userBlock.setOnMouseClicked(e -> userMenu.show(userBlock, Side.BOTTOM, 0, 4));
         
-        getChildren().addAll(titleLabel, spacer, favoritesButton, rmcAiButton, themeButton, userBlock);
+        getChildren().addAll(titleLabel, sectionSwitcher, spacer, favoritesButton, rmcAiButton, themeButton, userBlock);
         
         refreshUserBlock();
     }
@@ -163,6 +170,20 @@ public class TopBar extends HBox {
     
     public void setOnShowRmcAi(Runnable handler) {
         this.onShowRmcAi = handler;
+    }
+
+    /**
+     * Вызывается при выборе раздела "Реестр программ" в переключателе.
+     */
+    public void setOnShowRegistry(Runnable handler) {
+        sectionSwitcher.setOnShowRegistry(handler);
+    }
+
+    /**
+     * Вызывается при выборе раздела "Соглашения" в переключателе.
+     */
+    public void setOnShowCooperates(Runnable handler) {
+        sectionSwitcher.setOnShowCooperates(handler);
     }
     
     public void onAuthStateChanged() {

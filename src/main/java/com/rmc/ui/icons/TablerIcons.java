@@ -103,4 +103,13 @@ public final class TablerIcons {
     public static final String SCHOOL =
             "M22 9l-10 -4l-10 4l10 4l10 -4v6 "
             + "M6 10.6v5.4a6 3 0 0 0 12 0v-5.4";
+
+    public static final String LIST =
+            "M9 6l11 0 M9 12l11 0 M9 18l11 0 "
+            + "M5 6l0 .01 M5 12l0 .01 M5 18l0 .01";
+
+    public static final String FILE_TEXT =
+            "M14 3v4a1 1 0 0 0 1 1h4 "
+            + "M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z "
+            + "M9 9l1 0 M9 13l6 0 M9 17l6 0";
 }

@@ -23,27 +23,49 @@ import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 /**
  * Filters view - shows filter cards.
  */
 public class FiltersView extends VBox implements WorkspaceView {
-    
-    private final WorkspaceContainer container;
+
     private final VBox filterCardsContainer;
     private final Label statusLabel;
     private final ActionButton analyzeButton;
+    private final BiConsumer<String, List<String>> onAnalyze;
     private FilterSession filterSession;
     private List<FilterCard> filterCards = new ArrayList<>();
-    
+
+    /**
+     * Экран фильтров для реестра программ (как раньше) — запуск анализа
+     * идёт через {@code container.runAnalysis(...)}.
+     */
     public FiltersView(WorkspaceContainer container) {
-        this.container = container;
-        
+        this("Параметры поиска", container::runAnalysis);
+    }
+
+    /**
+     * Обобщённый экран фильтров для любого раздела сайта с такой же
+     * разметкой формы — заголовок и обработчик анализа задаются вызывающей
+     * стороной, чтобы один и тот же компонент мог обслуживать и реестр
+     * программ, и "Соглашения" (каждый со своим {@code WorkspaceContainer}
+     * методом анализа).
+     *
+     * @param titleText заголовок экрана (например, "Параметры поиска" или
+     *                   "Параметры поиска — Соглашения")
+     * @param onAnalyze  вызывается при нажатии "Начать анализ" с
+     *                   query-строкой фильтров и человекочитаемой сводкой
+     *                   активных фильтров
+     */
+    public FiltersView(String titleText, BiConsumer<String, List<String>> onAnalyze) {
+        this.onAnalyze = onAnalyze;
+
         getStyleClass().add("filters-view");
         setSpacing(16);
-        
+
         // Title
-        Label title = new Label("Параметры поиска");
+        Label title = new Label(titleText);
         title.getStyleClass().add("filters-title");
         
         // Filter cards scroll pane
@@ -171,7 +193,7 @@ public class FiltersView extends VBox implements WorkspaceView {
         }
         String queryString = filterSession.buildQueryString();
         List<String> summary = filterSession.getActiveFiltersSummary();
-        container.runAnalysis(queryString, summary);
+        onAnalyze.accept(queryString, summary);
     }
     
     @Override

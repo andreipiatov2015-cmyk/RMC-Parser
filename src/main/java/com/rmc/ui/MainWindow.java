@@ -70,7 +70,12 @@ public class MainWindow extends BorderPane {
         // а не через выезжающее меню.
         topBar.setOnShowFavorites(workspace::showFavorites);
         topBar.setOnShowRmcAi(workspace::showRmcAi);
-        
+
+        // Переключатель раздела в TopBar — "Реестр программ" (текущий
+        // функционал) / "Соглашения" (/cooperates/).
+        topBar.setOnShowRegistry(workspace::showRegistryHome);
+        topBar.setOnShowCooperates(workspace::showCooperatesSection);
+
         // Выход подтверждён в диалоге TopBar — выполняем сам выход и ведём
         // на форму входа с подставленным логином. Сохранённая учётная
         // запись НЕ удаляется (её видно на экране выбора аккаунта /

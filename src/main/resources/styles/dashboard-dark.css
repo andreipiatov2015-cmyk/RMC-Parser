@@ -449,6 +449,31 @@
     -fx-background-color: #30363D;
 }
 
+/* ========== Top Bar: переключатель раздела ========== */
+.dark-theme .section-switcher-pill {
+    -fx-background-color: #21262D;
+}
+
+.dark-theme .section-switcher-pill:hover {
+    -fx-background-color: #30363D;
+}
+
+.dark-theme .section-switcher-pill-active {
+    -fx-background-color: #58A6FF;
+}
+
+.dark-theme .section-switcher-pill-active .section-switcher-text {
+    -fx-text-fill: #0D1117;
+}
+
+.dark-theme .section-switcher-pill-active .tabler-icon {
+    -fx-stroke: #0D1117;
+}
+
+.dark-theme .section-switcher-text {
+    -fx-text-fill: #E6EDF3;
+}
+
 /* ========== Dashboard: свёрнутая полоска + заголовок с кнопками ========== */
 .dark-theme .dashboard-rail-button,
 .dark-theme .dashboard-header-button {

@@ -11,6 +11,7 @@ import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import com.rmc.ui.workspace.WorkspaceView;
 import com.rmc.ui.workspace.components.ActionButton;
+import com.rmc.ui.workspace.components.SelectableText;
 import org.slf4j.Logger;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
@@ -40,7 +41,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import javafx.util.Duration;
@@ -125,7 +125,7 @@ public class ResultsView extends VBox implements WorkspaceView {
         // можно было выделить мышью и скопировать, как на обычном сайте.
         // JavaFX Label такого не умеет, а нередактируемый TextField — умеет
         // "из коробки" (выделение, двойной клик по слову, Ctrl+C).
-        summaryLabel = selectableField("", "results-summary");
+        summaryLabel = SelectableText.field("", "results-summary");
         
         // Master-галочки — разовое действие "отметить/снять всё" в своей
         // группе: пишут напрямую в те же точечные предпочтения, после чего
@@ -715,7 +715,7 @@ public class ResultsView extends VBox implements WorkspaceView {
         card.setSpacing(2);
         card.setPadding(new Insets(10, 14, 10, 14));
 
-        TextField valueField = selectableField(String.valueOf(value), "results-stat-value", "results-stat-card-field");
+        TextField valueField = SelectableText.field(String.valueOf(value), "results-stat-value", "results-stat-card-field");
         valueField.setAlignment(Pos.CENTER);
         valueField.setPrefColumnCount(Math.max(2, String.valueOf(value).length()));
 
@@ -728,7 +728,7 @@ public class ResultsView extends VBox implements WorkspaceView {
         // карточки подстраивается под длину текста (setPrefColumnCount),
         // а не высота — карточка становится чуть шире вместо того, чтобы
         // расти вниз.
-        TextField nameField = selectableField(label, "results-stat-label", "results-stat-card-field");
+        TextField nameField = SelectableText.field(label, "results-stat-label", "results-stat-card-field");
         nameField.setAlignment(Pos.CENTER);
         nameField.setPrefColumnCount(Math.max(8, label.length()));
 
@@ -745,11 +745,11 @@ public class ResultsView extends VBox implements WorkspaceView {
         String displayName = institution.getOrganizationName() != null
                 ? institution.getOrganizationName()
                 : institution.getOrganizationId();
-        row.getChildren().add(selectableField(displayName, "results-institution-name"));
+        row.getChildren().add(SelectableText.field(displayName, "results-institution-name"));
 
         if (!institution.isSuccess()) {
             String errorText = "Ошибка: " + institution.getErrorMessage().orElse("не удалось получить данные");
-            row.getChildren().add(selectableArea(errorText, "results-institution-error"));
+            row.getChildren().add(SelectableText.area(errorText, "results-institution-error"));
         } else {
             StringBuilder statsLine = new StringBuilder();
             // Показываем все ОТМЕЧЕННЫЕ показатели, а если у этого учреждения
@@ -764,7 +764,7 @@ public class ResultsView extends VBox implements WorkspaceView {
                 statsLine.append(NO_SELECTED_STATS_HINT);
             }
 
-            row.getChildren().add(selectableArea(statsLine.toString(), "results-institution-stats"));
+            row.getChildren().add(SelectableText.area(statsLine.toString(), "results-institution-stats"));
         }
 
         return row;
@@ -776,10 +776,10 @@ public class ResultsView extends VBox implements WorkspaceView {
         VBox content = new VBox();
         content.setSpacing(4);
 
-        content.getChildren().add(selectableField(program.getProgramTitle(), "results-institution-name"));
+        content.getChildren().add(SelectableText.field(program.getProgramTitle(), "results-institution-name"));
 
         if (program.getOrganizationName() != null) {
-            content.getChildren().add(selectableField(program.getOrganizationName(), "results-institution-stats"));
+            content.getChildren().add(SelectableText.field(program.getOrganizationName(), "results-institution-stats"));
         }
 
         HBox row = new HBox();
@@ -792,13 +792,13 @@ public class ResultsView extends VBox implements WorkspaceView {
 
         if (!program.isSuccess()) {
             String errorText = "Ошибка: " + program.getErrorMessage().orElse("не удалось получить данные");
-            content.getChildren().add(selectableArea(errorText, "results-institution-error"));
+            content.getChildren().add(SelectableText.area(errorText, "results-institution-error"));
             return row;
         }
 
         program.getPriceCategoryEstimate().ifPresent(category -> {
             String text = ProgramAnalysis.PRICE_CATEGORY_LABEL + ": " + category;
-            content.getChildren().add(selectableField(text, "results-institution-stats"));
+            content.getChildren().add(SelectableText.field(text, "results-institution-stats"));
         });
 
         StringBuilder statsLine = new StringBuilder();
@@ -809,7 +809,7 @@ public class ResultsView extends VBox implements WorkspaceView {
         if (statsLine.length() == 0) {
             statsLine.append(NO_SELECTED_STATS_HINT);
         }
-        content.getChildren().add(selectableArea(statsLine.toString(), "results-institution-stats"));
+        content.getChildren().add(SelectableText.area(statsLine.toString(), "results-institution-stats"));
 
         // Кнопка "Навигатор" — только если на странице самой программы
         // нашлась такая ссылка (не у всех программ она есть); открывает
@@ -824,63 +824,6 @@ public class ResultsView extends VBox implements WorkspaceView {
         });
 
         return row;
-    }
-
-    /**
-     * Нередактируемое однострочное поле вместо {@link Label} — в отличие от
-     * Label, TextField поддерживает выделение текста мышью, двойной клик по
-     * слову и Ctrl+C, как на обычной веб-странице. Визуально выглядит как
-     * обычный текст благодаря классу "selectable-text" (см. CSS) — без
-     * рамки и фона поля ввода.
-     */
-    private static TextField selectableField(String text, String... styleClasses) {
-        TextField field = new TextField(text != null ? text : "");
-        field.setEditable(false);
-        field.setFocusTraversable(true);
-        field.getStyleClass().add("selectable-text");
-        field.getStyleClass().addAll(styleClasses);
-        field.setMaxWidth(Double.MAX_VALUE);
-        return field;
-    }
-
-    /**
-     * То же самое, что {@link #selectableField}, но для текста, который
-     * может переноситься на несколько строк (TextArea, а не TextField).
-     * Высота подгоняется под содержимое автоматически (см.
-     * {@link #bindAutoHeight}), чтобы не появлялась внутренняя прокрутка
-     * там, где её не было у прежнего Label с setWrapText(true).
-     */
-    private static TextArea selectableArea(String text, String... styleClasses) {
-        TextArea area = new TextArea(text != null ? text : "");
-        area.setEditable(false);
-        area.setWrapText(true);
-        area.setFocusTraversable(true);
-        area.getStyleClass().add("selectable-text");
-        area.getStyleClass().addAll(styleClasses);
-        area.setMaxWidth(Double.MAX_VALUE);
-        area.setPrefRowCount(1);
-        bindAutoHeight(area);
-        return area;
-    }
-
-    private static void bindAutoHeight(TextArea area) {
-        Text measurer = new Text();
-        measurer.textProperty().bind(area.textProperty());
-        measurer.fontProperty().bind(area.fontProperty());
-
-        Runnable resize = () -> {
-            double width = area.getWidth();
-            if (width <= 0) {
-                return;
-            }
-            measurer.setWrappingWidth(Math.max(0, width - 24));
-            double textHeight = measurer.getLayoutBounds().getHeight();
-            area.setPrefHeight(textHeight + 22);
-        };
-
-        area.widthProperty().addListener((obs, oldV, newV) -> resize.run());
-        area.textProperty().addListener((obs, oldV, newV) -> Platform.runLater(resize));
-        Platform.runLater(resize);
     }
 
     /**

@@ -22,11 +22,13 @@ public class FilterPageLoader {
     
     private final HttpClientService httpClient;
     private final String baseUrl;
+    private final String path;
     private String lastHtml;
-    
+
     private FilterPageLoader(Builder builder) {
         this.httpClient = builder.httpClient;
         this.baseUrl = builder.baseUrl;
+        this.path = builder.path;
     }
     
     /**
@@ -38,13 +40,14 @@ public class FilterPageLoader {
     
     /**
      * Загрузить страницу фильтров.
-     * 
-     * <p>Выполняет GET запрос к {baseUrl}/programs/</p>
-     * 
+     *
+     * <p>Выполняет GET запрос к {baseUrl}/{path} (по умолчанию
+     * {@code programs/}, см. {@link Builder#path(String)}).</p>
+     *
      * @return результат загрузки
      */
     public FilterPageResult load() {
-        String url = buildProgramsUrl();
+        String url = buildPageUrl();
         
         logger.info(LOG_LOADING_PAGE);
         
@@ -105,12 +108,12 @@ public class FilterPageLoader {
         return lastHtml != null ? lastHtml.length() : 0;
     }
     
-    private String buildProgramsUrl() {
+    private String buildPageUrl() {
         String base = baseUrl;
         if (!base.endsWith("/")) {
             base = base + "/";
         }
-        return base + "programs/";
+        return base + path;
     }
     
     @Override
@@ -126,17 +129,28 @@ public class FilterPageLoader {
         
         private HttpClientService httpClient;
         private String baseUrl = "https://rmc.example.com";
-        
+        private String path = "programs/";
+
         public Builder httpClient(HttpClientService httpClient) {
             this.httpClient = httpClient;
             return this;
         }
-        
+
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
-        
+
+        /**
+         * Путь страницы фильтров относительно {@code baseUrl} (со
+         * слэшем на конце), например {@code "programs/"} (по умолчанию)
+         * или {@code "cooperates/"} для раздела "Соглашения".
+         */
+        public Builder path(String path) {
+            this.path = path;
+            return this;
+        }
+
         public FilterPageLoader build() {
             if (httpClient == null) {
                 httpClient = HttpClientService.builder().build();
