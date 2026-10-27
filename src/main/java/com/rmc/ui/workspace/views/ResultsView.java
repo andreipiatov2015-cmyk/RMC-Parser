@@ -11,14 +11,10 @@ import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import com.rmc.ui.workspace.WorkspaceView;
 import com.rmc.ui.workspace.components.ActionButton;
+import com.rmc.ui.workspace.components.AutoHeightScrollPane;
+import com.rmc.ui.workspace.components.RatioSplitPane;
 import com.rmc.ui.workspace.components.SelectableText;
 import org.slf4j.Logger;
-import javafx.animation.Interpolator;
-import javafx.animation.KeyFrame;
-import javafx.animation.KeyValue;
-import javafx.animation.Timeline;
-import javafx.beans.property.DoubleProperty;
-import javafx.beans.property.SimpleDoubleProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -31,7 +27,6 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.control.Tooltip;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.FlowPane;
@@ -40,10 +35,8 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
-import javafx.util.Duration;
 
 import java.io.File;
 import java.io.IOException;
@@ -82,10 +75,8 @@ public class ResultsView extends VBox implements WorkspaceView {
 
     private static final Logger logger = AppLogger.getLogger();
 
-    private enum SplitMode {
-        INSTITUTIONS_ONLY, SPLIT, PROGRAMS_ONLY
-    }
-    
+    private static final double TOTALS_MAX_HEIGHT = 260;
+
     private final WorkspaceContainer container;
     private final StatDisplayPreferences statPrefs = new StatDisplayPreferences();
     
@@ -96,6 +87,9 @@ public class ResultsView extends VBox implements WorkspaceView {
     private final ActionButton statsToggleButton;
     private final FlowPane statsCheckboxPane;
     private final FlowPane totalsPane;
+    private final AutoHeightScrollPane totalsScroll;
+    private final VBox summaryDetails;
+    private final ActionButton summaryToggleButton;
     private final VBox institutionsList;
     private final VBox programsList;
     private final VBox institutionsPane;
@@ -103,9 +97,6 @@ public class ResultsView extends VBox implements WorkspaceView {
     private final ActionButton backButton;
     private final ActionButton exportButton;
     private final ActionButton copyButton;
-    
-    private final DoubleProperty splitRatio = new SimpleDoubleProperty(0.5);
-    private SplitMode currentSplitMode = SplitMode.SPLIT;
     
     private AnalysisResult currentResult;
     
@@ -176,15 +167,23 @@ public class ResultsView extends VBox implements WorkspaceView {
         // мог бы вытолкнуть нижний ряд кнопок за пределы окна, если оно
         // не развёрнуто на весь экран. Пока карточки умещаются — высота
         // как обычно, по содержимому, прокрутка не появляется.
-        ScrollPane totalsScroll = new ScrollPane(totalsPane);
-        totalsScroll.setFitToWidth(true);
+        // Высота блока подстраивается под число карточек (см.
+        // AutoHeightScrollPane): мало карточек — компактный блок, много —
+        // упирается в потолок и прокручивается.
+        totalsScroll = new AutoHeightScrollPane(totalsPane, TOTALS_MAX_HEIGHT);
         totalsScroll.getStyleClass().add("results-totals-scroll");
-        totalsScroll.setPrefHeight(220);
-        totalsScroll.setMinHeight(220);
-        totalsScroll.setMaxHeight(220);
-
-        VBox topSection = new VBox(12, summaryLabel, masterRow, selectionWarningLabel, statsToggleButton,
-                statsCheckboxPane, totalsScroll, new Separator());
+        
+        // Кнопка сворачивания всей верхней "сводки" (галочки, показатели,
+        // карточки) — чтобы освободить место под две колонки ниже.
+        summaryToggleButton = new ActionButton("Свернуть сводку ▴", ActionButton.Style.SECONDARY);
+        summaryToggleButton.setOnAction(e -> toggleSummary());
+        HBox summaryRow = new HBox(12, summaryLabel, summaryToggleButton);
+        summaryRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(summaryLabel, Priority.ALWAYS);
+        
+        summaryDetails = new VBox(12, masterRow, selectionWarningLabel, statsToggleButton,
+                statsCheckboxPane, totalsScroll);
+        VBox topSection = new VBox(12, summaryRow, summaryDetails, new Separator());
         
         // Область с разбивкой: "По учреждениям" слева, "По программам"
         // справа, ширина каждой панели анимированно управляется splitRatio.
@@ -199,7 +198,7 @@ public class ResultsView extends VBox implements WorkspaceView {
         institutionsPane = buildSplitPane("По учреждениям", institutionsList);
         programsPane = buildSplitPane("По программам", programsList);
         
-        RatioSplitPane splitContainer = new RatioSplitPane(institutionsPane, programsPane, splitRatio);
+        RatioSplitPane splitContainer = new RatioSplitPane(institutionsPane, programsPane);
         splitContainer.getStyleClass().add("results-split-container");
         VBox.setVgrow(splitContainer, Priority.ALWAYS);
         
@@ -226,7 +225,7 @@ public class ResultsView extends VBox implements WorkspaceView {
         // Переключатель "какую область показывать" — в том же ряду, что и
         // кнопки "Назад"/"Экспорт", справа от них (их центры на одном
         // уровне), а не поверх самой области с разбивкой.
-        HBox toggleRow = buildSplitToggleControls();
+        HBox toggleRow = splitContainer.createToggleControls("Только «По учреждениям»", "Только «По программам»");
         Region buttonsSpacer = new Region();
         HBox.setHgrow(buttonsSpacer, Priority.ALWAYS);
         
@@ -238,78 +237,6 @@ public class ResultsView extends VBox implements WorkspaceView {
         getChildren().addAll(title, topSection, splitContainer, buttonsRow);
         
         showPlaceholder();
-    }
-    
-    /**
-     * Область из двух панелей, делящих свою ширину в пропорции
-     * {@code ratio} (0 — вся ширина левой, 1 — вся правой).
-     *
-     * <p>Раскладка считается вручную, а собственные минимальную/
-     * предпочтительную ширину область объявляет нулевыми. Раньше панели
-     * растягивались через привязку своей ширины к ширине контейнера, а
-     * минимальная ширина самого контейнера считалась JavaFX как сумма
-     * минимальных ширин панелей — замкнутый круг: при округлении вверх на
-     * каждом кадре анимации контейнер "подрастал" на пиксель-другой, и после
-     * нескольких нажатий на стрелки вся программа уезжала за правый край
-     * экрана вместе с кнопками. Здесь ширина зависит только от того, что
-     * выделил родитель, и обратной связи нет.</p>
-     *
-     * <p>Каждая панель и сама область обрезаются по своим границам, иначе
-     * содержимое схлопнутой (нулевой ширины) панели торчало бы поверх
-     * соседней.</p>
-     */
-    private static final class RatioSplitPane extends Region {
-        
-        private final Region left;
-        private final Region right;
-        private final DoubleProperty ratio;
-        
-        RatioSplitPane(Region left, Region right, DoubleProperty ratio) {
-            this.left = left;
-            this.right = right;
-            this.ratio = ratio;
-            getChildren().addAll(left, right);
-            ratio.addListener((obs, oldValue, newValue) -> requestLayout());
-            clipToBounds(this);
-            clipToBounds(left);
-            clipToBounds(right);
-        }
-        
-        private static void clipToBounds(Region region) {
-            Rectangle clip = new Rectangle();
-            clip.widthProperty().bind(region.widthProperty());
-            clip.heightProperty().bind(region.heightProperty());
-            region.setClip(clip);
-        }
-        
-        @Override
-        protected double computeMinWidth(double height) {
-            return 0;
-        }
-        
-        @Override
-        protected double computePrefWidth(double height) {
-            return 0;
-        }
-        
-        @Override
-        protected double computeMinHeight(double width) {
-            return 0;
-        }
-        
-        @Override
-        protected double computePrefHeight(double width) {
-            return 200;
-        }
-        
-        @Override
-        protected void layoutChildren() {
-            double width = getWidth();
-            double height = getHeight();
-            double leftWidth = Math.round(width * (1.0 - ratio.get()));
-            left.resizeRelocate(0, 0, leftWidth, height);
-            right.resizeRelocate(leftWidth, 0, width - leftWidth, height);
-        }
     }
     
     private VBox buildSplitPane(String titleText, VBox contentList) {
@@ -326,58 +253,6 @@ public class ResultsView extends VBox implements WorkspaceView {
         pane.setPadding(new Insets(8));
         VBox.setVgrow(pane, Priority.ALWAYS);
         return pane;
-    }
-    
-    private HBox buildSplitToggleControls() {
-        Label btnLeft = splitToggleButton(TablerIcons.CHEVRON_LEFT, 18,
-                "Только «По учреждениям»", () -> animateSplitTo(SplitMode.INSTITUTIONS_ONLY));
-        
-        Label btnSplit = new Label("‖");
-        btnSplit.getStyleClass().add("results-split-toggle-button");
-        Tooltip.install(btnSplit, new Tooltip("Показать обе области поровну"));
-        btnSplit.setOnMouseClicked(e -> animateSplitTo(SplitMode.SPLIT));
-        
-        Label btnRight = splitToggleButton(TablerIcons.CHEVRON_RIGHT, 18,
-                "Только «По программам»", () -> animateSplitTo(SplitMode.PROGRAMS_ONLY));
-        
-        HBox row = new HBox(6, btnLeft, btnSplit, btnRight);
-        row.getStyleClass().add("results-split-toggle-row");
-        row.setAlignment(Pos.CENTER);
-        return row;
-    }
-    
-    private Label splitToggleButton(String iconPath, double size, String tooltipText, Runnable action) {
-        Label label = new Label();
-        label.setGraphic(TablerIcon.of(iconPath, size));
-        label.getStyleClass().add("results-split-toggle-button");
-        Tooltip.install(label, new Tooltip(tooltipText));
-        label.setOnMouseClicked(e -> action.run());
-        return label;
-    }
-    
-    /**
-     * Плавно переключает область между тремя состояниями — только
-     * учреждения, поровну, только программы (примерно как переключение
-     * рабочих столов в Windows, только не сдвигом экрана целиком, а
-     * плавным перетеканием ширины панелей — так корректно работает и
-     * "серединное", поделённое пополам состояние).
-     */
-    private void animateSplitTo(SplitMode mode) {
-        if (mode == currentSplitMode) {
-            return;
-        }
-        currentSplitMode = mode;
-        
-        double target = switch (mode) {
-            case INSTITUTIONS_ONLY -> 0.0;
-            case SPLIT -> 0.5;
-            case PROGRAMS_ONLY -> 1.0;
-        };
-        
-        Timeline timeline = new Timeline(
-                new KeyFrame(Duration.millis(280), new KeyValue(splitRatio, target, Interpolator.EASE_BOTH))
-        );
-        timeline.play();
     }
     
     /**
@@ -488,6 +363,8 @@ public class ResultsView extends VBox implements WorkspaceView {
             }
         }
         
+        totalsScroll.refreshSize();
+        
         institutionsList.getChildren().clear();
         for (InstitutionAnalysis institution : currentResult.getInstitutions()) {
             institutionsList.getChildren().add(createInstitutionRow(institution));
@@ -511,6 +388,13 @@ public class ResultsView extends VBox implements WorkspaceView {
                 && available.keySet().stream().noneMatch(statPrefs::isVisible);
         selectionWarningLabel.setVisible(nothingSelected);
         selectionWarningLabel.setManaged(nothingSelected);
+    }
+    
+    private void toggleSummary() {
+        boolean nowVisible = !summaryDetails.isVisible();
+        summaryDetails.setVisible(nowVisible);
+        summaryDetails.setManaged(nowVisible);
+        summaryToggleButton.setText(nowVisible ? "Свернуть сводку ▴" : "Развернуть сводку ▾");
     }
     
     private void toggleStatsPanel() {

@@ -10,6 +10,8 @@ import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
 import com.rmc.ui.workspace.WorkspaceView;
 import com.rmc.ui.workspace.components.ActionButton;
+import com.rmc.ui.workspace.components.AutoHeightScrollPane;
+import com.rmc.ui.workspace.components.RatioSplitPane;
 import com.rmc.ui.workspace.components.SelectableText;
 import org.slf4j.Logger;
 
@@ -27,6 +29,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
@@ -50,10 +53,14 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
 
     private static final Logger logger = AppLogger.getLogger();
 
+    private static final double TOTALS_MAX_HEIGHT = 260;
+
     private final WorkspaceContainer container;
 
     private final TextField summaryLabel;
     private final FlowPane totalsPane;
+    private final AutoHeightScrollPane totalsScroll;
+    private final ActionButton summaryToggleButton;
     private final VBox cooperatesList;
     private final VBox territoriesList;
     private final ActionButton backButton;
@@ -79,21 +86,19 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
         totalsPane.setHgap(12);
         totalsPane.setVgap(12);
 
-        ScrollPane totalsScroll = new ScrollPane(totalsPane);
-        totalsScroll.setFitToWidth(true);
+        // Высота блока подстраивается под число карточек, как и в Реестре
+        // программ (см. AutoHeightScrollPane).
+        totalsScroll = new AutoHeightScrollPane(totalsPane, TOTALS_MAX_HEIGHT);
         totalsScroll.getStyleClass().add("results-totals-scroll");
-        // Та же высота блока показателей, что и в Реестре программ (см.
-        // ResultsView) — раньше тут была попытка динамически сжимать
-        // область под малое число карточек, но из-за особенностей расчёта
-        // высоты FlowPane внутри ScrollPane это давало нестабильный,
-        // визуально урезанный результат (видна полоса прокрутки даже когда
-        // все карточки должны помещаться). Проще и надёжнее держать
-        // фиксированную высоту области одинаковой в обоих разделах.
-        totalsScroll.setPrefHeight(220);
-        totalsScroll.setMinHeight(220);
-        totalsScroll.setMaxHeight(220);
 
-        VBox topSection = new VBox(12, summaryLabel, totalsScroll, new Separator());
+        // Кнопка сворачивания сводки — освобождает место под две колонки ниже.
+        summaryToggleButton = new ActionButton("Свернуть сводку ▴", ActionButton.Style.SECONDARY);
+        summaryToggleButton.setOnAction(e -> toggleSummary());
+        HBox summaryRow = new HBox(12, summaryLabel, summaryToggleButton);
+        summaryRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(summaryLabel, Priority.ALWAYS);
+
+        VBox topSection = new VBox(12, summaryRow, totalsScroll, new Separator());
 
         cooperatesList = new VBox();
         cooperatesList.setSpacing(8);
@@ -118,12 +123,8 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
         // Реестре программ.
         VBox territoriesPane = buildPane("По территориям", territoriesScroll);
         VBox cooperatesPane = buildPane("Заявки", listScroll);
-        HBox panes = new HBox(12, territoriesPane, cooperatesPane);
-        territoriesPane.setPrefWidth(0);
-        cooperatesPane.setPrefWidth(0);
-        HBox.setHgrow(territoriesPane, Priority.ALWAYS);
-        HBox.setHgrow(cooperatesPane, Priority.ALWAYS);
-        territoriesPane.maxWidthProperty().bind(panes.widthProperty().multiply(0.42));
+        RatioSplitPane panes = new RatioSplitPane(territoriesPane, cooperatesPane);
+        panes.getStyleClass().add("results-split-container");
         VBox.setVgrow(panes, Priority.ALWAYS);
 
         backButton = new ActionButton("Назад к фильтрам", ActionButton.Style.SECONDARY);
@@ -140,7 +141,11 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
         copyButton.setOnAction(e -> onCopyAll());
         copyButton.setDisable(true);
 
-        HBox buttonsRow = new HBox(12, backButton, exportButton, copyButton);
+        HBox toggleRow = panes.createToggleControls("Только «По территориям»", "Только «Заявки»");
+        Region buttonsSpacer = new Region();
+        HBox.setHgrow(buttonsSpacer, Priority.ALWAYS);
+
+        HBox buttonsRow = new HBox(12, backButton, exportButton, copyButton, buttonsSpacer, toggleRow);
         buttonsRow.setAlignment(Pos.CENTER_LEFT);
 
         getChildren().addAll(title, topSection, panes, buttonsRow);
@@ -170,6 +175,8 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
                     yearHoursLabel(entry.getKey()), String.valueOf(entry.getValue())));
         }
 
+        totalsScroll.refreshSize();
+
         territoriesList.getChildren().clear();
         for (CooperateTerritoryStat stat : currentResult.getTerritoryStats()) {
             territoriesList.getChildren().add(createTerritoryRow(stat));
@@ -186,6 +193,13 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
         totalsPane.getChildren().clear();
         territoriesList.getChildren().clear();
         cooperatesList.getChildren().clear();
+    }
+
+    private void toggleSummary() {
+        boolean nowVisible = !totalsScroll.isVisible();
+        totalsScroll.setVisible(nowVisible);
+        totalsScroll.setManaged(nowVisible);
+        summaryToggleButton.setText(nowVisible ? "Свернуть сводку ▴" : "Развернуть сводку ▾");
     }
 
     private VBox buildPane(String titleText, ScrollPane scroll) {
