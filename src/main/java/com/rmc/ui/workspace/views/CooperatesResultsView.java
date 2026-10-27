@@ -81,6 +81,15 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
         totalsScroll.setFitToWidth(true);
         totalsScroll.getStyleClass().add("results-totals-scroll");
         totalsScroll.setMaxHeight(220);
+        // По умолчанию ScrollPane резервирует собственную минимальную высоту
+        // (~200px) независимо от реального размера содержимого — из-за этого
+        // при малом числе карточек-показателей под ними оставался большой
+        // пустой прокручиваемый блок. Привязываем предпочтительную высоту
+        // вьюпорта к фактической высоте содержимого (но не больше 220) —
+        // область сжимается под реальное число карточек и растёт обратно,
+        // если показателей снова станет много.
+        totalsScroll.prefViewportHeightProperty().bind(
+                javafx.beans.binding.Bindings.min(totalsPane.heightProperty(), 220));
 
         VBox topSection = new VBox(12, summaryLabel, totalsScroll, new Separator());
 

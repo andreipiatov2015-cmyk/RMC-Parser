@@ -180,6 +180,12 @@ public class ResultsView extends VBox implements WorkspaceView {
         totalsScroll.setFitToWidth(true);
         totalsScroll.getStyleClass().add("results-totals-scroll");
         totalsScroll.setMaxHeight(220);
+        // См. аналогичную привязку в CooperatesResultsView: без неё
+        // ScrollPane резервирует собственную минимальную высоту (~200px)
+        // даже когда карточек мало (например, после снятия большинства
+        // галочек "Показатели"), оставляя под ними пустое место.
+        totalsScroll.prefViewportHeightProperty().bind(
+                javafx.beans.binding.Bindings.min(totalsPane.heightProperty(), 220));
 
         VBox topSection = new VBox(12, summaryLabel, masterRow, selectionWarningLabel, statsToggleButton,
                 statsCheckboxPane, totalsScroll, new Separator());

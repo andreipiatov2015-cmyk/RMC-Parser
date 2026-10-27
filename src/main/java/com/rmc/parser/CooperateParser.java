@@ -77,6 +77,7 @@ public class CooperateParser {
                     .cooperateCount(cooperates.size())
                     .hasNextPage(hasNextPage(document))
                     .nextPageUrl(findNextPageUrl(document))
+                    .totalPages(findTotalPages(document))
                     .build();
 
         } catch (Exception e) {
@@ -303,6 +304,33 @@ public class CooperateParser {
     }
 
     /**
+     * Общее число страниц списка — для полосы прогресса во время обхода
+     * страниц (см. {@link com.rmc.search.service.CooperateAnalysisService}).
+     * Разметка пагинации сайта показывает все номера страниц явными
+     * ссылками (без "..."), поэтому берём максимальный номер среди них.
+     * Возвращает -1, если пагинации нет или номера страниц не удалось
+     * разобрать (тогда полоса прогресса просто не показывается).
+     */
+    private static int findTotalPages(Document document) {
+        Element pagination = document.selectFirst(".ui.pagination.menu");
+        if (pagination == null) {
+            return -1;
+        }
+
+        int maxPage = -1;
+        for (Element link : pagination.select("a.item")) {
+            String text = link.text().trim();
+            try {
+                int pageNumber = Integer.parseInt(text);
+                maxPage = Math.max(maxPage, pageNumber);
+            } catch (NumberFormatException ignored) {
+                // Нечисловые ссылки пагинации (стрелки "вперёд"/"назад" и т.п.) пропускаем.
+            }
+        }
+        return maxPage;
+    }
+
+    /**
      * Результат парсинга.
      */
     public static class ParseResult {
@@ -312,6 +340,7 @@ public class CooperateParser {
         private final int cooperateCount;
         private final boolean hasNextPage;
         private final String nextPageUrl;
+        private final int totalPages;
         private final String errorMessage;
 
         private ParseResult(Builder builder) {
@@ -320,6 +349,7 @@ public class CooperateParser {
             this.cooperateCount = builder.cooperateCount;
             this.hasNextPage = builder.hasNextPage;
             this.nextPageUrl = builder.nextPageUrl;
+            this.totalPages = builder.totalPages;
             this.errorMessage = builder.errorMessage;
         }
 
@@ -347,6 +377,14 @@ public class CooperateParser {
             return Optional.ofNullable(nextPageUrl);
         }
 
+        /**
+         * Общее число страниц списка, если удалось определить из
+         * пагинации, иначе -1 (см. {@link #findTotalPages}).
+         */
+        public int getTotalPages() {
+            return totalPages;
+        }
+
         public Optional<String> getErrorMessage() {
             return Optional.ofNullable(errorMessage);
         }
@@ -358,6 +396,7 @@ public class CooperateParser {
             private int cooperateCount;
             private boolean hasNextPage;
             private String nextPageUrl;
+            private int totalPages = -1;
             private String errorMessage;
 
             public Builder success(boolean success) {
@@ -382,6 +421,11 @@ public class CooperateParser {
 
             public Builder nextPageUrl(String nextPageUrl) {
                 this.nextPageUrl = nextPageUrl;
+                return this;
+            }
+
+            public Builder totalPages(int totalPages) {
+                this.totalPages = totalPages;
                 return this;
             }
 

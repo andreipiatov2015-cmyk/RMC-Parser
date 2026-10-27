@@ -62,6 +62,11 @@ public class CooperateAnalysisService {
 
         String nextRelativeUrl = "/cooperates/" + (queryString != null && !queryString.isEmpty() ? "?" + queryString : "");
         int pageCount = 0;
+        // Становится известно после разбора первой же страницы (пагинация
+        // сайта показывает все номера страниц явными ссылками) — до этого
+        // момента полоса прогресса скрыта (total <= 0), как и при обычной
+        // загрузке списка в реестре программ.
+        int totalPages = -1;
 
         while (nextRelativeUrl != null && pageCount < MAX_PAGES) {
             if (isCancelled.getAsBoolean()) {
@@ -69,7 +74,10 @@ public class CooperateAnalysisService {
             }
 
             pageCount++;
-            report(listener, "Загрузка списка соглашений, страница " + pageCount + "...", 0, 0);
+            String pageLabel = totalPages > 0
+                    ? "Загрузка списка соглашений, страница " + pageCount + " из " + totalPages + "..."
+                    : "Загрузка списка соглашений, страница " + pageCount + "...";
+            report(listener, pageLabel, pageCount - 1, totalPages > 0 ? totalPages : 0);
 
             String fullUrl = resolveUrl(nextRelativeUrl);
             SearchResult pageResult = searchService.search(fullUrl);
@@ -93,10 +101,14 @@ public class CooperateAnalysisService {
                         .build();
             }
 
+            if (parseResult.getTotalPages() > 0) {
+                totalPages = parseResult.getTotalPages();
+            }
+
             allCooperates.addAll(parseResult.getCooperates());
             nextRelativeUrl = parseResult.hasNextPage() ? parseResult.getNextPageUrl().orElse(null) : null;
 
-            report(listener, "Загружено заявок: " + allCooperates.size(), pageCount, 0);
+            report(listener, "Загружено заявок: " + allCooperates.size(), pageCount, totalPages > 0 ? totalPages : 0);
         }
 
         logger.info(LOG_COOPERATES_TOTAL, allCooperates.size(), pageCount);
