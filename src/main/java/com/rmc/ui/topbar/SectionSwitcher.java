@@ -44,7 +44,7 @@ public class SectionSwitcher extends HBox {
 
         registryPill = new Pill(TablerIcons.LIST, "Реестр программ");
         cooperatesPill = new Pill(TablerIcons.FILE_TEXT, "Соглашения");
-        paramsPill = new Pill(TablerIcons.SETTINGS, "Параметры РМЦ");
+        paramsPill = new Pill(TablerIcons.CLIPBOARD_LIST, "Параметры РМЦ");
 
         registryPill.setOnAction(() -> {
             setActive(registryPill);

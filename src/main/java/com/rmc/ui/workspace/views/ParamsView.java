@@ -6,6 +6,7 @@ import com.rmc.export.ParamsExportService;
 import com.rmc.params.ParamsAnalysisResult;
 import com.rmc.params.ParamsCard;
 import com.rmc.params.ParamsPage;
+import com.rmc.params.ParamsTable;
 import com.rmc.ui.icons.TablerIcon;
 import com.rmc.ui.icons.TablerIcons;
 import com.rmc.ui.workspace.WorkspaceContainer;
@@ -19,7 +20,10 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
 import javafx.scene.input.Clipboard;
@@ -28,6 +32,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
@@ -58,6 +63,13 @@ public class ParamsView extends VBox implements WorkspaceView {
     private final WorkspaceContainer container;
 
     private final ActionButton filtersButton;
+    private final ActionButton modeButton;
+    private final TableView<ParamsTable.Row> tableView = new TableView<>();
+    private final StackPane contentHolder = new StackPane();
+    private final RatioSplitPane panes;
+    private final HBox buttonsRow;
+    private final HBox toggleRow;
+    private boolean tableMode = true;
     private final TextField summaryLabel;
     private final Label activeFiltersLabel;
     private final VBox territoriesList;
@@ -76,17 +88,20 @@ public class ParamsView extends VBox implements WorkspaceView {
         setSpacing(16);
 
         Label title = new Label("Параметры РМЦ");
-        title.setGraphic(TablerIcon.of(TablerIcons.SETTINGS, 20));
+        title.setGraphic(TablerIcon.of(TablerIcons.CLIPBOARD_LIST, 20));
         title.getStyleClass().add("results-title");
 
         filtersButton = new ActionButton("Фильтры", ActionButton.Style.PRIMARY);
         filtersButton.setGraphic(TablerIcon.onPrimary(TablerIcons.FILTER, 14));
         filtersButton.setOnAction(e -> container.showParamsFilters());
 
+        modeButton = new ActionButton("", ActionButton.Style.SECONDARY);
+        modeButton.setOnAction(e -> setTableMode(!tableMode));
+
         summaryLabel = SelectableText.field("", "results-summary");
         HBox.setHgrow(summaryLabel, Priority.ALWAYS);
 
-        HBox topRow = new HBox(16, filtersButton, summaryLabel);
+        HBox topRow = new HBox(16, filtersButton, modeButton, summaryLabel);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         activeFiltersLabel = new Label();
@@ -113,9 +128,12 @@ public class ParamsView extends VBox implements WorkspaceView {
 
         VBox territoriesPane = buildPane("Территории", territoriesScroll);
         VBox detailsPane = buildPane("Параметры", detailsScroll);
-        RatioSplitPane panes = new RatioSplitPane(territoriesPane, detailsPane);
+        panes = new RatioSplitPane(territoriesPane, detailsPane);
         panes.getStyleClass().add("results-split-container");
-        VBox.setVgrow(panes, Priority.ALWAYS);
+
+        buildTable();
+        contentHolder.getChildren().addAll(tableView, panes);
+        VBox.setVgrow(contentHolder, Priority.ALWAYS);
 
         exportButton = new ActionButton("Экспорт в Excel", ActionButton.Style.PRIMARY);
         exportButton.setGraphic(TablerIcon.onPrimary(TablerIcons.DOWNLOAD, 14));
@@ -127,14 +145,59 @@ public class ParamsView extends VBox implements WorkspaceView {
         copyButton.setOnAction(e -> onCopyAll());
         copyButton.setDisable(true);
 
-        HBox toggleRow = panes.createToggleControls("Только «Территории»", "Только «Параметры»");
+        toggleRow = panes.createToggleControls("Только «Территории»", "Только «Параметры»");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox buttonsRow = new HBox(12, exportButton, copyButton, spacer, toggleRow);
+        buttonsRow = new HBox(12, exportButton, copyButton, spacer, toggleRow);
         buttonsRow.setAlignment(Pos.CENTER_LEFT);
 
-        getChildren().addAll(title, topSection, panes, buttonsRow);
+        getChildren().addAll(title, topSection, contentHolder, buttonsRow);
+        setTableMode(true);
         showPlaceholder();
+    }
+
+    private void setTableMode(boolean table) {
+        this.tableMode = table;
+        tableView.setVisible(table);
+        tableView.setManaged(table);
+        panes.setVisible(!table);
+        panes.setManaged(!table);
+        toggleRow.setVisible(!table);
+        toggleRow.setManaged(!table);
+        // Кнопка предлагает переключиться на ДРУГОЙ режим.
+        modeButton.setText(table ? "Режим 2: карточки" : "Режим 1: таблица");
+        modeButton.setGraphic(TablerIcon.of(table ? TablerIcons.LIST : TablerIcons.TABLE, 14));
+    }
+
+    private void buildTable() {
+        tableView.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        tableView.setPlaceholder(new Label("Данные появятся после загрузки"));
+        tableView.getStyleClass().add("params-table");
+
+        tableView.getColumns().add(textColumn("Муниципалитет", 260, ParamsTable.Row::territory));
+        tableView.getColumns().add(textColumn("Год", 60, ParamsTable.Row::year));
+        tableView.getColumns().add(textColumn("Группа сертификата", 150, ParamsTable.Row::groupName));
+
+        String currentGroup = null;
+        TableColumn<ParamsTable.Row, String> groupColumn = null;
+        for (int i = 0; i < ParamsTable.COLUMNS.size(); i++) {
+            ParamsTable.Column def = ParamsTable.COLUMNS.get(i);
+            if (!def.group().equals(currentGroup)) {
+                currentGroup = def.group();
+                groupColumn = new TableColumn<>(currentGroup);
+                tableView.getColumns().add(groupColumn);
+            }
+            final int index = i;
+            groupColumn.getColumns().add(textColumn(def.label(), 140, r -> r.values().get(index)));
+        }
+    }
+
+    private static TableColumn<ParamsTable.Row, String> textColumn(
+            String title, double width, java.util.function.Function<ParamsTable.Row, String> getter) {
+        TableColumn<ParamsTable.Row, String> col = new TableColumn<>(title);
+        col.setPrefWidth(width);
+        col.setCellValueFactory(cd -> new ReadOnlyStringWrapper(getter.apply(cd.getValue())));
+        return col;
     }
 
     private VBox buildPane(String titleText, ScrollPane scroll) {
@@ -156,6 +219,7 @@ public class ParamsView extends VBox implements WorkspaceView {
             showPlaceholder();
             return;
         }
+        tableView.getItems().setAll(ParamsTable.from(currentResult).getRows());
 
         int active = currentFilterSummary.size();
         filtersButton.setText(active > 0 ? "Фильтры (" + active + ")" : "Фильтры");
@@ -192,6 +256,7 @@ public class ParamsView extends VBox implements WorkspaceView {
         territoriesList.getChildren().clear();
         detailsList.getChildren().clear();
         territoryRows.clear();
+        tableView.getItems().clear();
     }
 
     private VBox createTerritoryRow(ParamsAnalysisResult.TerritoryYear ty) {

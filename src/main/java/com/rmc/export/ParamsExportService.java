@@ -5,6 +5,7 @@ import com.rmc.logging.AppLogger;
 import com.rmc.params.ParamsAnalysisResult;
 import com.rmc.params.ParamsCard;
 import com.rmc.params.ParamsPage;
+import com.rmc.params.ParamsTable;
 import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -60,25 +61,30 @@ public final class ParamsExportService {
     private static void writeSummary(Workbook workbook, CellStyle header, ParamsAnalysisResult result) {
         Sheet sheet = workbook.createSheet("Сводка");
         Row head = sheet.createRow(0);
-        text(head, 0, "Территория", header);
+        text(head, 0, "Муниципалитет", header);
         text(head, 1, "Год", header);
-        int col = 2;
-        for (ParamsPage page : ParamsPage.values()) {
-            text(head, col++, page.getTitle() + " (карточек)", header);
+        text(head, 2, "Группа сертификата", header);
+        int col = 3;
+        for (ParamsTable.Column def : ParamsTable.COLUMNS) {
+            text(head, col++, def.group() + " / " + def.label(), header);
         }
         int rowIdx = 1;
-        for (ParamsAnalysisResult.TerritoryYear ty : result.getTerritoryYears()) {
+        for (ParamsTable.Row r : ParamsTable.from(result).getRows()) {
             Row row = sheet.createRow(rowIdx++);
-            text(row, 0, ty.getTerritory(), null);
-            text(row, 1, ty.getYear(), null);
-            int c = 2;
-            for (ParamsPage page : ParamsPage.values()) {
-                row.createCell(c++).setCellValue(ty.getCards(page).size());
+            text(row, 0, r.territory(), null);
+            text(row, 1, r.year(), null);
+            text(row, 2, r.groupName(), null);
+            for (int i = 0; i < r.values().size(); i++) {
+                value(row.createCell(3 + i), r.values().get(i));
             }
         }
-        for (int i = 0; i < 2 + ParamsPage.values().length; i++) {
+        for (int i = 0; i < 3 + ParamsTable.COLUMNS.size(); i++) {
             sheet.autoSizeColumn(i);
+            if (sheet.getColumnWidth(i) > 40 * 256) {
+                sheet.setColumnWidth(i, 40 * 256);
+            }
         }
+        sheet.createFreezePane(1, 1);
     }
 
     private static void writePage(Workbook workbook, CellStyle header, CellStyle link, ParamsPage page,
