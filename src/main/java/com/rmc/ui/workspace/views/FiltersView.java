@@ -59,6 +59,14 @@ public class FiltersView extends VBox implements WorkspaceView {
      *                   активных фильтров
      */
     public FiltersView(String titleText, BiConsumer<String, List<String>> onAnalyze) {
+        this(titleText, "Начать анализ", onAnalyze);
+    }
+
+    /**
+     * То же, но с подписью кнопки запуска (например, "Применить" для
+     * фильтров, которые открываются отдельным окном).
+     */
+    public FiltersView(String titleText, String buttonText, BiConsumer<String, List<String>> onAnalyze) {
         this.onAnalyze = onAnalyze;
 
         getStyleClass().add("filters-view");
@@ -86,7 +94,7 @@ public class FiltersView extends VBox implements WorkspaceView {
         statusLabel.getStyleClass().add("filters-status");
         
         // Analyze button
-        analyzeButton = new ActionButton("Начать анализ", ActionButton.Style.PRIMARY);
+        analyzeButton = new ActionButton(buttonText, ActionButton.Style.PRIMARY);
         analyzeButton.setOnAction(e -> onAnalyze());
         analyzeButton.setMaxWidth(Double.MAX_VALUE);
         analyzeButton.setPrefHeight(44);

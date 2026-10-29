@@ -6,6 +6,10 @@ import com.rmc.filters.loader.FilterPageResult;
 import com.rmc.filters.model.FilterGroup;
 import com.rmc.filters.parser.FilterParser;
 import com.rmc.history.SearchHistoryService;
+import com.rmc.params.ParamsAnalysisResult;
+import com.rmc.params.ParamsAnalysisService;
+import com.rmc.params.ParamsFilterMapper;
+import com.rmc.params.ParamsPage;
 import com.rmc.http.HttpClientService;
 import com.rmc.search.model.AnalysisResult;
 import com.rmc.search.model.CooperateAnalysisResult;
@@ -15,13 +19,16 @@ import com.rmc.search.service.ProgramSearchService;
 import com.rmc.state.ApplicationState;
 import com.rmc.ui.dashboard.Dashboard;
 import com.rmc.ui.statusbar.StatusBar;
+import com.rmc.ui.theme.ThemeService;
 import com.rmc.ui.workspace.views.*;
 import javafx.animation.FadeTransition;
 import javafx.geometry.Insets;
 import javafx.scene.layout.StackPane;
 import javafx.util.Duration;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Workspace container - manages state transitions and views.
@@ -43,6 +50,8 @@ public class WorkspaceContainer extends StackPane {
     private final RmcAiView rmcAiView;
     private final FiltersView cooperatesFiltersView;
     private final CooperatesResultsView cooperatesResultsView;
+    private final FiltersView paramsFiltersView;
+    private final ParamsView paramsView;
 
     // References
     private Dashboard dashboard;
@@ -55,6 +64,12 @@ public class WorkspaceContainer extends StackPane {
     // первом переходе на этот раздел — повторный переход просто показывает
     // уже готовый экран, без повторного похода на сайт.
     private boolean cooperatesFiltersLoaded = false;
+
+    // Раздел "Параметры РМЦ": общий набор фильтров трёх страниц сайта и
+    // сопоставление его полей с полями каждой страницы. Загружаются один
+    // раз за сессию, при первом переходе на раздел.
+    private ParamsFilterMapper paramsMapper;
+    private javafx.scene.control.Dialog<javafx.scene.control.ButtonType> paramsFiltersDialog;
 
     public WorkspaceContainer() {
         getStyleClass().add("workspace");
@@ -72,6 +87,8 @@ public class WorkspaceContainer extends StackPane {
         rmcAiView = new RmcAiView(this);
         cooperatesFiltersView = new FiltersView("Параметры поиска — Соглашения", this::runCooperatesAnalysis);
         cooperatesResultsView = new CooperatesResultsView(this);
+        paramsFiltersView = new FiltersView("Фильтры — Параметры РМЦ", "Применить", (query, summary) -> applyParamsFilters());
+        paramsView = new ParamsView(this);
 
         // Начинаем с выбора аккаунта, если есть сохранённые, иначе — с формы входа
         if (AccountPickerView.hasSavedAccounts()) {
@@ -160,6 +177,8 @@ public class WorkspaceContainer extends StackPane {
             case COOPERATES_FILTERS_READY -> cooperatesFiltersView;
             case COOPERATES_ANALYZING -> loadingView;
             case COOPERATES_RESULTS -> cooperatesResultsView;
+            case PARAMS_ANALYZING -> loadingView;
+            case PARAMS_READY -> paramsView;
             case ERROR -> errorView;
         };
     }
@@ -518,6 +537,158 @@ public class WorkspaceContainer extends StackPane {
     private void onCooperatesAnalysisFailed(String error) {
         transitionTo(WorkspaceState.ERROR,
                 () -> ((ErrorView) currentView).setError("Ошибка анализа «Соглашения»: " + error));
+    }
+
+    /**
+     * Перейти на раздел "Параметры РМЦ": данные трёх страниц сайта
+     * (параметры муниципалитета, групп сертификатов, потенциальный
+     * баланс) по общему фильтру. При первом переходе за сессию загружает
+     * формы фильтров всех трёх страниц и сразу показывает все данные без
+     * фильтров; повторные переходы просто показывают готовый экран.
+     */
+    public void showParamsSection() {
+        if (paramsMapper != null) {
+            transitionTo(WorkspaceState.PARAMS_READY);
+            return;
+        }
+
+        // Одно и то же состояние (и один и тот же экран загрузки) на всё
+        // время первой загрузки — и фильтров, и самих данных.
+        transitionTo(WorkspaceState.PARAMS_ANALYZING);
+        loadingView.setCancellable(false, null);
+        loadingView.resetProgress();
+        loadingView.setStatus("Загрузка фильтров раздела «Параметры РМЦ»...");
+
+        new Thread(() -> {
+            try {
+                HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
+                Map<ParamsPage, List<FilterGroup>> groupsByPage = new EnumMap<>(ParamsPage.class);
+
+                for (ParamsPage page : ParamsPage.values()) {
+                    FilterPageResult pageResult = FilterPageLoader.builder()
+                            .httpClient(httpClient)
+                            .baseUrl(ServerConfig.BASE_URL)
+                            .path(page.getPath())
+                            .build()
+                            .load();
+                    if (!pageResult.isSuccess()) {
+                        String message = "«" + page.getTitle() + "»: "
+                                + pageResult.getErrorMessage().orElse("не удалось загрузить страницу фильтров");
+                        javafx.application.Platform.runLater(() -> onParamsFailed(message));
+                        return;
+                    }
+                    FilterParser.ParseResult parseResult = FilterParser.parse(pageResult.getHtml());
+                    if (!parseResult.isSuccess()) {
+                        String message = "«" + page.getTitle() + "»: "
+                                + parseResult.getErrorMessage().orElse("не удалось разобрать фильтры");
+                        javafx.application.Platform.runLater(() -> onParamsFailed(message));
+                        return;
+                    }
+                    groupsByPage.put(page, parseResult.getGroups());
+                }
+
+                ParamsFilterMapper mapper = ParamsFilterMapper.build(groupsByPage);
+                javafx.application.Platform.runLater(() -> {
+                    paramsMapper = mapper;
+                    paramsFiltersView.setFilters(mapper.getUnifiedGroups());
+                    runParamsAnalysis(emptyParamsQueries(), List.of());
+                });
+            } catch (Exception e) {
+                javafx.application.Platform.runLater(() -> onParamsFailed("Ошибка: " + e.getMessage()));
+            }
+        }).start();
+    }
+
+    private static Map<ParamsPage, String> emptyParamsQueries() {
+        Map<ParamsPage, String> queries = new EnumMap<>(ParamsPage.class);
+        for (ParamsPage page : ParamsPage.values()) {
+            queries.put(page, "");
+        }
+        return queries;
+    }
+
+    /**
+     * Открывает окно с общими фильтрами раздела "Параметры РМЦ" (кнопка
+     * "Фильтры" на экране раздела). Выбор действует сразу на все три
+     * страницы сайта.
+     */
+    public void showParamsFilters() {
+        if (paramsMapper == null || paramsFiltersDialog != null) {
+            return;
+        }
+        javafx.scene.control.Dialog<javafx.scene.control.ButtonType> dialog = new javafx.scene.control.Dialog<>();
+        dialog.setTitle("Фильтры — Параметры РМЦ");
+        if (getScene() != null) {
+            dialog.initOwner(getScene().getWindow());
+        }
+        dialog.getDialogPane().getStylesheets().add(
+                getClass().getResource("/styles/dashboard.css").toExternalForm());
+        dialog.getDialogPane().getStylesheets().add(
+                getClass().getResource("/styles/dashboard-dark.css").toExternalForm());
+        dialog.getDialogPane().getStyleClass().add("app-dialog");
+        if (ThemeService.isDarkMode()) {
+            dialog.getDialogPane().getStyleClass().add("dark-theme");
+        }
+        dialog.getDialogPane().setPrefSize(760, 640);
+        dialog.getDialogPane().setContent(paramsFiltersView);
+        dialog.getDialogPane().getButtonTypes().add(javafx.scene.control.ButtonType.CLOSE);
+        dialog.setOnHidden(e -> {
+            dialog.getDialogPane().setContent(null);
+            paramsFiltersDialog = null;
+        });
+        paramsFiltersDialog = dialog;
+        dialog.show();
+    }
+
+    private void applyParamsFilters() {
+        if (paramsMapper == null || paramsFiltersView.getFilterSession() == null) {
+            return;
+        }
+        com.rmc.filters.session.FilterSession session = paramsFiltersView.getFilterSession();
+        Map<ParamsPage, String> queries = paramsMapper.buildQueries(session);
+        List<String> summary = session.getActiveFiltersSummary();
+        if (paramsFiltersDialog != null) {
+            paramsFiltersDialog.close();
+        }
+        runParamsAnalysis(queries, summary);
+    }
+
+    private void runParamsAnalysis(Map<ParamsPage, String> queries, List<String> filterSummary) {
+        transitionTo(WorkspaceState.PARAMS_ANALYZING);
+
+        java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean(false);
+        loadingView.setCancellable(true, () -> cancelled.set(true));
+        loadingView.resetProgress();
+        loadingView.setStatus("Загрузка данных раздела «Параметры РМЦ»...");
+
+        new Thread(() -> {
+            try {
+                HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
+                ProgramSearchService searchService = ProgramSearchService.builder()
+                        .httpClient(httpClient)
+                        .build();
+                ParamsAnalysisResult result = new ParamsAnalysisService(searchService).analyze(queries,
+                        (status, current, total) -> javafx.application.Platform.runLater(
+                                () -> updateProgress(status, current, total)),
+                        cancelled::get);
+
+                javafx.application.Platform.runLater(() -> {
+                    if (result.isSuccess()) {
+                        transitionTo(WorkspaceState.PARAMS_READY,
+                                () -> paramsView.setResult(result, filterSummary));
+                    } else {
+                        onParamsFailed(result.getErrorMessage().orElse("Неизвестная ошибка"));
+                    }
+                });
+            } catch (Exception e) {
+                javafx.application.Platform.runLater(() -> onParamsFailed("Ошибка: " + e.getMessage()));
+            }
+        }).start();
+    }
+
+    private void onParamsFailed(String error) {
+        transitionTo(WorkspaceState.ERROR,
+                () -> ((ErrorView) currentView).setError("Ошибка раздела «Параметры РМЦ»: " + error));
     }
 
     public WorkspaceState getCurrentState() {

@@ -43,6 +43,12 @@ public enum WorkspaceState {
     /** Показ результатов анализа раздела "Соглашения" */
     COOPERATES_RESULTS,
 
+    /** Загрузка данных раздела "Параметры РМЦ" (фильтры и карточки трёх страниц) */
+    PARAMS_ANALYZING,
+
+    /** Показ данных раздела "Параметры РМЦ" */
+    PARAMS_READY,
+
     /** Error occurred */
     ERROR
 }

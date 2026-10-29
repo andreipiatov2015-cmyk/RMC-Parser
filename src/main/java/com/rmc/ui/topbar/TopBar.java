@@ -185,6 +185,13 @@ public class TopBar extends HBox {
     public void setOnShowCooperates(Runnable handler) {
         sectionSwitcher.setOnShowCooperates(handler);
     }
+
+    /**
+     * Вызывается при выборе раздела "Параметры РМЦ" в переключателе.
+     */
+    public void setOnShowParams(Runnable handler) {
+        sectionSwitcher.setOnShowParams(handler);
+    }
     
     public void onAuthStateChanged() {
         refreshUserBlock();

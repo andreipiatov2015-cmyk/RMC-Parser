@@ -16,8 +16,8 @@ import javafx.scene.text.Text;
 import javafx.util.Duration;
 
 /**
- * Переключатель раздела ("Реестр программ" / "Соглашения") в TopBar —
- * два круглых значка, которые при наведении мыши "раскрываются" в пилюлю с
+ * Переключатель раздела ("Реестр программ" / "Соглашения" / "Параметры РМЦ") в TopBar —
+ * круглые значки, которые при наведении мыши "раскрываются" в пилюлю с
  * подписью, а соседний значок при этом естественно отъезжает в сторону
  * (это просто следствие того, что оба значка лежат в одном {@link HBox} —
  * когда один становится шире, второй сдвигается сам, без какой-либо
@@ -31,9 +31,11 @@ public class SectionSwitcher extends HBox {
 
     private final Pill registryPill;
     private final Pill cooperatesPill;
+    private final Pill paramsPill;
 
     private Runnable onShowRegistry;
     private Runnable onShowCooperates;
+    private Runnable onShowParams;
 
     public SectionSwitcher() {
         getStyleClass().add("section-switcher");
@@ -42,6 +44,7 @@ public class SectionSwitcher extends HBox {
 
         registryPill = new Pill(TablerIcons.LIST, "Реестр программ");
         cooperatesPill = new Pill(TablerIcons.FILE_TEXT, "Соглашения");
+        paramsPill = new Pill(TablerIcons.SETTINGS, "Параметры РМЦ");
 
         registryPill.setOnAction(() -> {
             setActive(registryPill);
@@ -56,7 +59,14 @@ public class SectionSwitcher extends HBox {
             }
         });
 
-        getChildren().addAll(registryPill, cooperatesPill);
+        paramsPill.setOnAction(() -> {
+            setActive(paramsPill);
+            if (onShowParams != null) {
+                onShowParams.run();
+            }
+        });
+
+        getChildren().addAll(registryPill, cooperatesPill, paramsPill);
 
         // "Реестр программ" — раздел, с которым приложение всегда
         // начинает работу (он и был единственным разделом раньше).
@@ -66,6 +76,7 @@ public class SectionSwitcher extends HBox {
     private void setActive(Pill active) {
         registryPill.setActive(active == registryPill);
         cooperatesPill.setActive(active == cooperatesPill);
+        paramsPill.setActive(active == paramsPill);
     }
 
     public void setOnShowRegistry(Runnable handler) {
@@ -74,6 +85,10 @@ public class SectionSwitcher extends HBox {
 
     public void setOnShowCooperates(Runnable handler) {
         this.onShowCooperates = handler;
+    }
+
+    public void setOnShowParams(Runnable handler) {
+        this.onShowParams = handler;
     }
 
     /**

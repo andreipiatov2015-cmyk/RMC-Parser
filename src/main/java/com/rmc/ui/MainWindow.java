@@ -75,6 +75,7 @@ public class MainWindow extends BorderPane {
         // функционал) / "Соглашения" (/cooperates/).
         topBar.setOnShowRegistry(workspace::showRegistryHome);
         topBar.setOnShowCooperates(workspace::showCooperatesSection);
+        topBar.setOnShowParams(workspace::showParamsSection);
 
         // Выход подтверждён в диалоге TopBar — выполняем сам выход и ведём
         // на форму входа с подставленным логином. Сохранённая учётная
