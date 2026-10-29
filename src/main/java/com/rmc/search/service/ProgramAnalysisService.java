@@ -242,6 +242,7 @@ public class ProgramAnalysisService {
                                                      List<ProgramAnalysis> programAccumulator) {
         String orgId = org.getId().orElse("");
         String orgName = org.getName();
+        String orgMunicipality = org.getMunicipality().orElse(null);
         String orgRelativeUrl = org.getUrl().orElse(null);
         String orgFullUrl = orgRelativeUrl != null ? resolveUrl(orgRelativeUrl) : null;
         
@@ -290,6 +291,7 @@ public class ProgramAnalysisService {
                     .programId(program.getId())
                     .programTitle(program.getTitle())
                     .organizationName(orgName)
+                    .organizationMunicipality(orgMunicipality)
                     .organizationId(orgId)
                     .priceCategoryEstimate(priceCategory);
             
@@ -356,6 +358,7 @@ public class ProgramAnalysisService {
         InstitutionAnalysis.Builder resultBuilder = InstitutionAnalysis.builder()
                 .organizationId(orgId)
                 .organizationName(orgName)
+                .organizationMunicipality(orgMunicipality)
                 .organizationUrl(orgFullUrl)
                 .filteredStats(filteredStats)
                 .overallStats(overallStats)

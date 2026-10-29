@@ -14,6 +14,7 @@ public class Organization {
     private final String address;
     private final String phone;
     private final String website;
+    private final String municipality;
     
     private Organization(Builder builder) {
         this.id = builder.id;
@@ -22,6 +23,7 @@ public class Organization {
         this.address = builder.address;
         this.phone = builder.phone;
         this.website = builder.website;
+        this.municipality = builder.municipality;
     }
     
     public static Builder builder() {
@@ -59,6 +61,14 @@ public class Organization {
         return Optional.ofNullable(website);
     }
     
+    /**
+     * @return муниципалитет учреждения (первая подпись под названием в
+     * списке), если она есть в разметке
+     */
+    public Optional<String> getMunicipality() {
+        return Optional.ofNullable(municipality);
+    }
+    
     @Override
     public String toString() {
         return name != null ? name : "";
@@ -88,6 +98,7 @@ public class Organization {
         private String address;
         private String phone;
         private String website;
+        private String municipality;
         
         public Builder id(String id) {
             this.id = id;
@@ -116,6 +127,11 @@ public class Organization {
         
         public Builder website(String website) {
             this.website = website;
+            return this;
+        }
+        
+        public Builder municipality(String municipality) {
+            this.municipality = municipality;
             return this;
         }
         

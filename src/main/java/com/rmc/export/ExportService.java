@@ -288,6 +288,7 @@ public class ExportService {
         Row header = sheet.createRow(rowIdx++);
         int col = 0;
         setCell(header, col++, "Учреждение", headerStyle);
+        setCell(header, col++, "Муниципалитет", headerStyle);
         setCell(header, col++, "Ссылка", headerStyle);
         for (String statName : filtered) {
             setCell(header, col++, "[По фильтру] " + statName, headerStyle);
@@ -305,6 +306,7 @@ public class ExportService {
                     ? institution.getOrganizationName()
                     : institution.getOrganizationId();
             setCell(row, col++, name);
+            setCell(row, col++, institution.getOrganizationMunicipality().orElse(""));
             
             Optional<String> url = institution.getOrganizationUrl();
             if (url.isPresent()) {
@@ -332,7 +334,7 @@ public class ExportService {
                     : "Ошибка: " + institution.getErrorMessage().orElse("не удалось получить данные"));
         }
         
-        autoSizeColumns(sheet, filtered.size() + overall.size() + 3);
+        autoSizeColumns(sheet, filtered.size() + overall.size() + 4);
     }
     
     /**
@@ -363,6 +365,7 @@ public class ExportService {
         int col = 0;
         setCell(header, col++, "Программа", headerStyle);
         setCell(header, col++, "Учреждение", headerStyle);
+        setCell(header, col++, "Муниципалитет", headerStyle);
         setCell(header, col++, "Ссылка на программу", headerStyle);
         setCell(header, col++, "Навигатор", headerStyle);
         setCell(header, col++, ProgramAnalysis.PRICE_CATEGORY_LABEL, headerStyle);
@@ -377,6 +380,7 @@ public class ExportService {
 
             setCell(row, col++, program.getProgramTitle());
             setCell(row, col++, program.getOrganizationName());
+            setCell(row, col++, program.getOrganizationMunicipality().orElse(""));
 
             Optional<String> programUrl = program.getProgramUrl();
             if (programUrl.isPresent()) {
@@ -404,7 +408,7 @@ public class ExportService {
                     : "Ошибка: " + program.getErrorMessage().orElse("не удалось получить данные"));
         }
 
-        autoSizeColumns(sheet, statNames.size() + 5);
+        autoSizeColumns(sheet, statNames.size() + 6);
     }
 
     private static int writeHyperlinkCell(Row row, int col, CreationHelper creationHelper,

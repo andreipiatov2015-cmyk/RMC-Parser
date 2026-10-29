@@ -24,6 +24,7 @@ public class ProgramAnalysis {
     private final String programTitle;
     private final String programUrl;
     private final String organizationName;
+    private final String organizationMunicipality;
     private final String organizationId;
     private final Map<String, Integer> filteredStats;
     private final String priceCategoryEstimate;
@@ -36,6 +37,7 @@ public class ProgramAnalysis {
         this.programTitle = builder.programTitle;
         this.programUrl = builder.programUrl;
         this.organizationName = builder.organizationName;
+        this.organizationMunicipality = builder.organizationMunicipality;
         this.organizationId = builder.organizationId;
         this.filteredStats = Map.copyOf(builder.filteredStats);
         this.priceCategoryEstimate = builder.priceCategoryEstimate;
@@ -58,6 +60,10 @@ public class ProgramAnalysis {
     
     public Optional<String> getProgramUrl() {
         return Optional.ofNullable(programUrl);
+    }
+    
+    public java.util.Optional<String> getOrganizationMunicipality() {
+        return java.util.Optional.ofNullable(organizationMunicipality);
     }
     
     public String getOrganizationName() {
@@ -103,6 +109,7 @@ public class ProgramAnalysis {
         private String programTitle;
         private String programUrl;
         private String organizationName;
+        private String organizationMunicipality;
         private String organizationId;
         private Map<String, Integer> filteredStats = new LinkedHashMap<>();
         private String priceCategoryEstimate;
@@ -122,6 +129,11 @@ public class ProgramAnalysis {
         
         public Builder programUrl(String programUrl) {
             this.programUrl = programUrl;
+            return this;
+        }
+        
+        public Builder organizationMunicipality(String organizationMunicipality) {
+            this.organizationMunicipality = organizationMunicipality;
             return this;
         }
         

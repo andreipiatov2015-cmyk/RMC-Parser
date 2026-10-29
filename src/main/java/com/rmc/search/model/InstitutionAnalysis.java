@@ -47,6 +47,7 @@ public class InstitutionAnalysis {
     private final String organizationId;
     private final String organizationName;
     private final String organizationUrl;
+    private final String organizationMunicipality;
     private final Map<String, Integer> filteredStats;
     private final Map<String, Integer> overallStats;
     private final boolean success;
@@ -56,6 +57,7 @@ public class InstitutionAnalysis {
         this.organizationId = builder.organizationId;
         this.organizationName = builder.organizationName;
         this.organizationUrl = builder.organizationUrl;
+        this.organizationMunicipality = builder.organizationMunicipality;
         this.filteredStats = Map.copyOf(builder.filteredStats);
         this.overallStats = Map.copyOf(builder.overallStats);
         this.success = builder.success;
@@ -68,6 +70,10 @@ public class InstitutionAnalysis {
     
     public String getOrganizationId() {
         return organizationId;
+    }
+    
+    public Optional<String> getOrganizationMunicipality() {
+        return Optional.ofNullable(organizationMunicipality);
     }
     
     public String getOrganizationName() {
@@ -109,6 +115,7 @@ public class InstitutionAnalysis {
         private String organizationId;
         private String organizationName;
         private String organizationUrl;
+        private String organizationMunicipality;
         private Map<String, Integer> filteredStats = new LinkedHashMap<>();
         private Map<String, Integer> overallStats = new LinkedHashMap<>();
         private boolean success;
@@ -121,6 +128,11 @@ public class InstitutionAnalysis {
         
         public Builder organizationName(String organizationName) {
             this.organizationName = organizationName;
+            return this;
+        }
+        
+        public Builder organizationMunicipality(String organizationMunicipality) {
+            this.organizationMunicipality = organizationMunicipality;
             return this;
         }
         

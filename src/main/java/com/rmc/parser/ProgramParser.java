@@ -238,10 +238,24 @@ public class ProgramParser {
             return null;
         }
         
+        // Под названием идут подписи .sub.header: первая — муниципалитет,
+        // вторая — министерство (та же разметка, что и в разделе "Соглашения").
+        String municipality = null;
+        if (contentDiv != null) {
+            Element firstSubHeader = contentDiv.selectFirst(".sub.header");
+            if (firstSubHeader != null) {
+                String text = firstSubHeader.text().trim();
+                if (!text.isEmpty()) {
+                    municipality = text;
+                }
+            }
+        }
+        
         return Organization.builder()
                 .id(id)
                 .url(href)
                 .name(name)
+                .municipality(municipality)
                 .build();
     }
     
