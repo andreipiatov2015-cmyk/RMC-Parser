@@ -184,9 +184,7 @@ public class HttpClientService {
             HttpRequest request = builder.build();
             
             if (logRequests) {
-                logger.debug("POST Request: {} - {}", uri, body.length() > 100 
-                        ? body.substring(0, 100) + "..." 
-                        : body);
+                logger.debug("POST Request: {}", uri);
             }
             
             java.net.http.HttpResponse<String> response = sessionManager.getHttpClient()
