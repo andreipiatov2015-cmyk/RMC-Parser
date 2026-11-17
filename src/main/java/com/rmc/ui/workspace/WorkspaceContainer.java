@@ -6,689 +6,329 @@ import com.rmc.filters.loader.FilterPageResult;
 import com.rmc.filters.model.FilterGroup;
 import com.rmc.filters.parser.FilterParser;
 import com.rmc.history.SearchHistoryService;
-import com.rmc.params.ParamsAnalysisResult;
-import com.rmc.params.ParamsAnalysisService;
-import com.rmc.params.ParamsFilterMapper;
-import com.rmc.params.ParamsPage;
 import com.rmc.http.HttpClientService;
-import com.rmc.search.model.AnalysisResult;
-import com.rmc.search.model.CooperateAnalysisResult;
-import com.rmc.search.service.CooperateAnalysisService;
-import com.rmc.search.service.ProgramAnalysisService;
-import com.rmc.search.service.ProgramSearchService;
+import com.rmc.params.ParamsAnalysisService;
+import com.rmc.search.service.*;
 import com.rmc.state.ApplicationState;
 import com.rmc.ui.dashboard.Dashboard;
-import com.rmc.ui.statusbar.StatusBar;
-import com.rmc.ui.theme.ThemeService;
+import com.rmc.ui.topbar.TopBar;
 import com.rmc.ui.workspace.views.*;
-import javafx.animation.FadeTransition;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.layout.StackPane;
-import javafx.util.Duration;
 
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
-/**
- * Workspace container - manages state transitions and views.
- */
+import static com.rmc.ui.workspace.WorkspaceState.*;
+
+/** Each section keeps its current screen and outstanding request for the authenticated session. */
 public class WorkspaceContainer extends StackPane {
-
-    private WorkspaceState currentState = WorkspaceState.AUTH;
+    private final AccountPickerView picker = new AccountPickerView(this);
+    private final AuthView auth = new AuthView(this);
+    private final ResultsView results = new ResultsView(this);
+    private final CooperatesResultsView agreementsResults = new CooperatesResultsView(this);
+    private final ParamsView paramsView = new ParamsView(this);
+    private final FavoritesView favorites = new FavoritesView(this);
+    private final RmcAiView ai = new RmcAiView(this);
+    private final ErrorView error = new ErrorView(this);
+    private final FiltersView filters = new FiltersView(this);
+    private final FiltersView agreementsFilters = new FiltersView("Параметры поиска — Соглашения", this::runCooperatesAnalysis);
+    private final Section registry = new Section();
+    private final Section agreements = new Section();
+    private final Section params = new Section();
+    private Section active;
+    private Section filterSection;
+    private WorkspaceState currentState;
     private WorkspaceView currentView;
-    
-    // Views
-    private final AccountPickerView accountPickerView;
-    private final AuthView authView;
-    private final LoadingView loadingView;
-    private final FiltersView filtersView;
-    private final ResultsView resultsView;
-    private final ErrorView errorView;
-    private final FavoritesView favoritesView;
-    private final InstitutionDetailView institutionDetailView;
-    private final RmcAiView rmcAiView;
-    private final FiltersView cooperatesFiltersView;
-    private final CooperatesResultsView cooperatesResultsView;
-    private final FiltersView paramsFiltersView;
-    private final ParamsView paramsView;
-
-    // References
     private Dashboard dashboard;
-    private StatusBar statusBar;
+    private TopBar topBar;
 
-    // Previous state for retry
-    private WorkspaceState previousState;
+    private static final class Section {
+        final LoadingView loading = new LoadingView();
+        boolean hasFilters;
+        WorkspaceState state;
+        WorkspaceView view;
+        String error;
+        Runnable retry;
+        Request request;
 
-    // Фильтры "Соглашения" загружаются только один раз за сессию, при
-    // первом переходе на этот раздел — повторный переход просто показывает
-    // уже готовый экран, без повторного похода на сайт.
-    private boolean cooperatesFiltersLoaded = false;
+        void invalidate() {
+            if (request != null) request.cancelled = true;
+            request = null;
+            state = null;
+            view = null;
+            retry = null;
+            error = null;
+        }
+    }
 
-    // Раздел "Параметры РМЦ": общий набор фильтров трёх страниц сайта и
-    // сопоставление его полей с полями каждой страницы. Загружаются один
-    // раз за сессию, при первом переходе на раздел.
-    private ParamsFilterMapper paramsMapper;
-    private javafx.scene.control.Dialog<javafx.scene.control.ButtonType> paramsFiltersDialog;
+    private static final class Request {
+        final HttpClientService client = ApplicationState.getInstance().getHttpClient();
+        final Section section;
+        volatile boolean cancelled;
+
+        Request(Section section) {
+            this.section = section;
+        }
+
+        void progress(String message, int current, int total) {
+            Platform.runLater(() -> {
+                if (section.request == this) {
+                    section.loading.setStatus(message);
+                    section.loading.setProgress(current, total);
+                }
+            });
+        }
+
+        ProgramSearchService search() {
+            return ProgramSearchService.builder().httpClient(client).build();
+        }
+    }
 
     public WorkspaceContainer() {
         getStyleClass().add("workspace");
         setPadding(new Insets(16));
-        
-        // Create all views
-        accountPickerView = new AccountPickerView(this);
-        authView = new AuthView(this);
-        loadingView = new LoadingView();
-        filtersView = new FiltersView(this);
-        resultsView = new ResultsView(this);
-        errorView = new ErrorView(this);
-        favoritesView = new FavoritesView(this);
-        institutionDetailView = new InstitutionDetailView(this);
-        rmcAiView = new RmcAiView(this);
-        cooperatesFiltersView = new FiltersView("Параметры поиска — Соглашения", this::runCooperatesAnalysis);
-        cooperatesResultsView = new CooperatesResultsView(this);
-        paramsFiltersView = new FiltersView("Фильтры — Параметры РМЦ", "Применить", (query, summary) -> applyParamsFilters());
-        paramsView = new ParamsView(this);
-
-        // Начинаем с выбора аккаунта, если есть сохранённые, иначе — с формы входа
-        if (AccountPickerView.hasSavedAccounts()) {
-            currentState = WorkspaceState.ACCOUNT_PICKER;
-            currentView = accountPickerView;
-            accountPickerView.refresh();
-            getChildren().add(accountPickerView);
-        } else {
-            currentState = WorkspaceState.AUTH;
-            currentView = authView;
-            getChildren().add(authView);
-        }
+        transitionTo(AccountPickerView.hasSavedAccounts() ? ACCOUNT_PICKER : AUTH);
     }
-    
-    public void setReferences(Dashboard dashboard, StatusBar statusBar) {
+
+    public void setReferences(Dashboard dashboard, TopBar topBar) {
         this.dashboard = dashboard;
-        this.statusBar = statusBar;
+        this.topBar = topBar;
     }
-    
-    public void transitionTo(WorkspaceState newState) {
-        transitionTo(newState, (Runnable) null);
+
+    private boolean authenticated() {
+        return ApplicationState.getInstance().isAuthenticated();
     }
-    
-    public void transitionTo(WorkspaceState newState, Object data) {
-        transitionTo(newState, () -> {
-            // Handle data based on state — выполняется ПОСЛЕ onEnter(),
-            // иначе onEnter() (который может сбрасывать поля вида) выполнится
-            // асинхронно позже и затрёт то, что мы здесь устанавливаем.
-            if (newState == WorkspaceState.ERROR && data instanceof String error) {
-                ((ErrorView) currentView).setError(error);
-            }
-        });
-    }
-    
-    private void transitionTo(WorkspaceState newState, Runnable afterShown) {
-        if (newState == currentState) {
-            if (afterShown != null) {
-                afterShown.run();
-            }
-            return;
+
+    public void transitionTo(WorkspaceState state) {
+        if (state == AUTH || state == ACCOUNT_PICKER) {
+            active = null;
+            show(state, state == AUTH ? auth : picker);
         }
-        
-        previousState = currentState;
-        currentState = newState;
-        
-        WorkspaceView newView = getViewForState(newState);
-        
-        // Fade transition
-        FadeTransition fadeOut = new FadeTransition(Duration.millis(150), currentView.getRoot());
-        fadeOut.setToValue(0);
-        
-        FadeTransition fadeIn = new FadeTransition(Duration.millis(150), newView.getRoot());
-        fadeIn.setToValue(1);
-        
-        WorkspaceView previousView = currentView;
-        fadeOut.setOnFinished(e -> {
-            previousView.getRoot().setVisible(false);
-            previousView.onExit();
-            if (!getChildren().contains(newView.getRoot())) {
-                getChildren().add(newView.getRoot());
-            }
-            newView.getRoot().setVisible(true);
-            newView.onEnter();
-            if (afterShown != null) {
-                afterShown.run();
-            }
-            fadeIn.play();
-        });
-        
-        fadeOut.play();
-        currentView = newView;
     }
-    
-    private WorkspaceView getViewForState(WorkspaceState state) {
-        return switch (state) {
-            case ACCOUNT_PICKER -> accountPickerView;
-            case AUTH -> authView;
-            case LOADING_FILTERS -> loadingView;
-            case FILTERS_READY -> filtersView;
-            case ANALYZING -> loadingView;
-            case RESULTS -> resultsView;
-            case FAVORITES -> favoritesView;
-            case INSTITUTION_DETAIL -> institutionDetailView;
-            case RMC_AI -> rmcAiView;
-            case COOPERATES_LOADING_FILTERS -> loadingView;
-            case COOPERATES_FILTERS_READY -> cooperatesFiltersView;
-            case COOPERATES_ANALYZING -> loadingView;
-            case COOPERATES_RESULTS -> cooperatesResultsView;
-            case PARAMS_ANALYZING -> loadingView;
-            case PARAMS_READY -> paramsView;
-            case ERROR -> errorView;
-        };
+
+    private void show(WorkspaceState state, WorkspaceView view) {
+        if (currentView != view) {
+            if (currentView != null) currentView.onExit();
+            getChildren().setAll(view.getRoot());
+            currentView = view;
+        }
+        currentState = state;
+        view.onEnter();
     }
-    
-    /**
-     * @return экран фильтров — используется, например, {@link FavoritesView}
-     * для доступа к уже загруженному списку учреждений через
-     * {@link FiltersView#getFilterSession()}.
-     */
-    public FiltersView getFiltersView() {
-        return filtersView;
+
+    private void display(Section section) {
+        show(section.state, section.view);
+        if (section.state == ERROR) error.setError(section.error);
     }
-    
-    /**
-     * Перейти на экран "Избранные учреждения".
-     */
-    public void showFavorites() {
-        transitionTo(WorkspaceState.FAVORITES);
+
+    private void remember(Section section, WorkspaceState state, WorkspaceView view) {
+        section.state = state;
+        section.view = view;
+        if (active == section) display(section);
     }
-    
-    /**
-     * Перейти на экран "RMCAI" — чат с нейросетью по данным сайта.
-     */
-    public void showRmcAi() {
-        transitionTo(WorkspaceState.RMC_AI);
+
+    private void select(Section section) {
+        if (active == params && section != params) params.invalidate();
+        active = section;
+        if (section != null && topBar != null) topBar.selectSection(section == agreements, section == params);
+        if (section == registry || section == agreements) filterSection = section;
     }
-    
-    /**
-     * Открыть подробную информацию по избранному учреждению — отдельный
-     * экран внутри программы (не отдельное окно), в отличие от диалога
-     * добавления учреждения в избранное, который так и остаётся отдельным
-     * окном по своей природе (это разовое действие, а не то, что нужно
-     * рассматривать долго).
-     */
-    public void showInstitutionDetail(com.rmc.favorites.FavoriteInstitution favorite) {
-        transitionTo(WorkspaceState.INSTITUTION_DETAIL, () -> institutionDetailView.showInstitution(favorite));
-    }
-    
+
     public void onAuthStateChanged() {
-        // Called when auth state changes
+        if (!authenticated()) {
+            registry.invalidate();
+            agreements.invalidate();
+            params.invalidate();
+            registry.hasFilters = false;
+            agreements.hasFilters = false;
+            filters.setFilters(List.of());
+            agreementsFilters.setFilters(List.of());
+            results.setResult(null);
+            agreementsResults.setResult(null);
+            paramsView.setResult(null);
+            filterSection = registry;
+            transitionTo(AUTH);
+        }
     }
-    
-    // State transition methods
-    
+
     public void onLoginSuccess(String username) {
-        transitionTo(WorkspaceState.LOADING_FILTERS);
-
-        new Thread(() -> {
-            try {
-                // Используем тот же HttpClientService, в котором лежат cookies
-                // (sessionid), полученные во время авторизации.
-                HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
-
-                FilterPageLoader loader = FilterPageLoader.builder()
-                        .httpClient(httpClient)
-                        .baseUrl(ServerConfig.BASE_URL)
-                        .build();
-
-                FilterPageResult pageResult = loader.load();
-
-                if (!pageResult.isSuccess()) {
-                    javafx.application.Platform.runLater(() ->
-                            onFiltersLoadFailed(pageResult.getErrorMessage()
-                                    .orElse("Не удалось загрузить страницу фильтров")));
-                    return;
-                }
-
-                FilterParser.ParseResult parseResult = FilterParser.parse(pageResult.getHtml());
-
-                if (!parseResult.isSuccess()) {
-                    javafx.application.Platform.runLater(() ->
-                            onFiltersLoadFailed(parseResult.getErrorMessage()
-                                    .orElse("Не удалось разобрать фильтры")));
-                    return;
-                }
-
-                List<FilterGroup> groups = parseResult.getGroups();
-
-                javafx.application.Platform.runLater(() -> {
-                    onFiltersLoaded(groups);
-                    if (dashboard != null) {
-                        dashboard.onAuthStateChanged();
-                    }
-                    if (statusBar != null) {
-                        statusBar.setConnected(true);
-                    }
-                });
-
-            } catch (Exception e) {
-                javafx.application.Platform.runLater(() ->
-                        onFiltersLoadFailed("Ошибка: " + e.getMessage()));
-            }
-        }).start();
+        showRegistryHome();
     }
-    
-    public void onLoginFailure(String message) {
-        transitionTo(WorkspaceState.ERROR,
-                () -> ((ErrorView) currentView).setError("Ошибка входа: " + message));
-    }
-    
-    public void onFiltersLoaded(List<FilterGroup> groups) {
-        transitionTo(WorkspaceState.FILTERS_READY,
-                () -> ((FiltersView) currentView).setFilters(groups));
-    }
-    
-    public void onFiltersLoadFailed(String error) {
-        transitionTo(WorkspaceState.ERROR,
-                () -> ((ErrorView) currentView).setError("Ошибка загрузки фильтров: " + error));
-    }
-    
-    public void onAnalysisStarted() {
-        transitionTo(WorkspaceState.ANALYZING);
-    }
-    
-    /**
-     * Перейти на форму входа для повторной авторизации после "Выхода":
-     * логин подставляется, пароль — всегда вводится заново. Сама учётная
-     * запись при этом остаётся сохранённой (доступна через "Сменить
-     * пользователя" / экран выбора аккаунта) — "Выход" её не удаляет.
-     */
+
     public void promptReloginFor(String username) {
-        transitionTo(WorkspaceState.AUTH, () -> authView.prefillUsername(username));
+        transitionTo(AUTH);
+        auth.prefillUsername(username);
     }
-    
-    /**
-     * Перейти на экран выбора учётной записи — используется кнопкой
-     * "Сменить пользователя". Список карточек обновится сам — см.
-     * {@link AccountPickerView#onEnter()}, вызываемый из {@link #transitionTo}.
-     */
+
     public void showAccountPicker() {
-        transitionTo(WorkspaceState.ACCOUNT_PICKER);
-    }
-    
-    /**
-     * Запускает полный цикл анализа по готовой query-строке фильтров.
-     * Единая точка входа — используется и кнопкой "Начать анализ" в
-     * {@link FiltersView}, и повтором прошлого запроса из истории поиска
-     * на {@link Dashboard}.
-     *
-     * @param queryString   query-строка фильтров (без ведущего "?")
-     * @param filterSummary человекочитаемая сводка применённых фильтров —
-     *                      сохраняется в историю поиска вместе с итогом
-     */
-    public void runAnalysis(String queryString, List<String> filterSummary) {
-        onAnalysisStarted();
-        
-        java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean(false);
-        loadingView.setCancellable(true, () -> cancelled.set(true));
-        loadingView.resetProgress();
-        
-        new Thread(() -> {
-            try {
-                HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
-                ProgramSearchService searchService = ProgramSearchService.builder()
-                        .httpClient(httpClient)
-                        .build();
-                ProgramAnalysisService analysisService = ProgramAnalysisService.builder()
-                        .baseUrl(ServerConfig.BASE_URL)
-                        .searchService(searchService)
-                        .build();
-                
-                AnalysisResult result = analysisService.analyze(queryString,
-                        (status, current, total) -> javafx.application.Platform.runLater(
-                                () -> updateProgress(status, current, total)),
-                        cancelled::get);
-                
-                javafx.application.Platform.runLater(() -> {
-                    if (result.isSuccess()) {
-                        // Отменённый (частичный) результат в историю не пишем —
-                        // цифры неполные, и "Повторить" на их основе введёт в заблуждение.
-                        if (!result.isCancelled()) {
-                            SearchHistoryService.add(queryString, filterSummary,
-                                    result.getTotalPrograms(), result.getTotalInstitutions());
-                            if (dashboard != null) {
-                                dashboard.refreshHistory();
-                            }
-                        }
-                        onAnalysisComplete(result);
-                    } else {
-                        onAnalysisFailed(result.getErrorMessage().orElse("Неизвестная ошибка анализа"));
-                    }
-                });
-            } catch (Exception e) {
-                javafx.application.Platform.runLater(() ->
-                        onAnalysisFailed("Ошибка: " + e.getMessage()));
-            }
-        }).start();
-    }
-    
-    /**
-     * Обновить статус на экране загрузки во время анализа
-     * (например, "Учреждение 3 из 12: МБОУ ..."). {@code current}/
-     * {@code total} — для полосы прогресса; {@code total <= 0}, если
-     * общее число шагов на этом этапе ещё не известно.
-     */
-    public void updateProgress(String status, int current, int total) {
-        if (loadingView != null) {
-            loadingView.setStatus(status);
-            loadingView.setProgress(current, total);
-        }
-    }
-    
-    public void onAnalysisComplete(AnalysisResult result) {
-        transitionTo(WorkspaceState.RESULTS,
-                () -> ((ResultsView) currentView).setResult(result));
-    }
-    
-    public void onAnalysisFailed(String error) {
-        transitionTo(WorkspaceState.ERROR,
-                () -> ((ErrorView) currentView).setError("Ошибка анализа: " + error));
-    }
-    
-    public void onRetry() {
-        if (previousState != null) {
-            transitionTo(previousState);
-        } else {
-            transitionTo(WorkspaceState.AUTH);
-        }
-    }
-    
-    public void onLogout() {
-        transitionTo(WorkspaceState.AUTH);
-        if (dashboard != null) {
-            dashboard.onAuthStateChanged();
-        }
-        if (statusBar != null) {
-            statusBar.setConnected(false);
-        }
-    }
-    
-    public void onBackToFilters() {
-        transitionTo(WorkspaceState.FILTERS_READY);
+        if (authenticated()) ApplicationState.getInstance().logout();
+        transitionTo(ACCOUNT_PICKER);
     }
 
-    /**
-     * Перейти на экран "Реестр программ" (используется кнопками "Назад к
-     * фильтрам" на экранах раздела "Соглашения", и переключателем-пилюлей
-     * в TopBar).
-     */
+    public FiltersView getFiltersView() {
+        return filters;
+    }
+
     public void showRegistryHome() {
-        transitionTo(WorkspaceState.FILTERS_READY);
+        openSearchSection(registry);
     }
 
-    /**
-     * Перейти на раздел "Соглашения" (/cooperates/) — зеркало реестра
-     * программ с собственными фильтрами. Фильтры загружаются с сайта
-     * только при первом переходе за сессию; повторные переходы просто
-     * показывают уже готовый экран.
-     */
     public void showCooperatesSection() {
-        if (cooperatesFiltersLoaded) {
-            transitionTo(WorkspaceState.COOPERATES_FILTERS_READY);
-            return;
-        }
-
-        transitionTo(WorkspaceState.COOPERATES_LOADING_FILTERS);
-
-        new Thread(() -> {
-            try {
-                HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
-
-                FilterPageLoader loader = FilterPageLoader.builder()
-                        .httpClient(httpClient)
-                        .baseUrl(ServerConfig.BASE_URL)
-                        .path("cooperates/")
-                        .build();
-
-                FilterPageResult pageResult = loader.load();
-
-                if (!pageResult.isSuccess()) {
-                    javafx.application.Platform.runLater(() ->
-                            onCooperatesFiltersLoadFailed(pageResult.getErrorMessage()
-                                    .orElse("Не удалось загрузить страницу фильтров")));
-                    return;
-                }
-
-                FilterParser.ParseResult parseResult = FilterParser.parse(pageResult.getHtml());
-
-                if (!parseResult.isSuccess()) {
-                    javafx.application.Platform.runLater(() ->
-                            onCooperatesFiltersLoadFailed(parseResult.getErrorMessage()
-                                    .orElse("Не удалось разобрать фильтры")));
-                    return;
-                }
-
-                List<FilterGroup> groups = parseResult.getGroups();
-
-                javafx.application.Platform.runLater(() -> onCooperatesFiltersLoaded(groups));
-
-            } catch (Exception e) {
-                javafx.application.Platform.runLater(() ->
-                        onCooperatesFiltersLoadFailed("Ошибка: " + e.getMessage()));
-            }
-        }).start();
+        openSearchSection(agreements);
     }
 
-    private void onCooperatesFiltersLoaded(List<FilterGroup> groups) {
-        cooperatesFiltersLoaded = true;
-        transitionTo(WorkspaceState.COOPERATES_FILTERS_READY,
-                () -> cooperatesFiltersView.setFilters(groups));
+    private void openSearchSection(Section section) {
+        if (!authenticated()) return;
+        select(section);
+        if (section.state == null) loadFilters(section);
+        else display(section);
     }
 
-    private void onCooperatesFiltersLoadFailed(String error) {
-        transitionTo(WorkspaceState.ERROR,
-                () -> ((ErrorView) currentView).setError("Ошибка загрузки фильтров «Соглашения»: " + error));
-    }
-
-    /**
-     * Запускает анализ раздела "Соглашения" по готовой query-строке
-     * фильтров — аналог {@link #runAnalysis(String, List)} для реестра
-     * программ, но проще: данные уже полностью есть в самой таблице
-     * списка, без захода на отдельные страницы заявок.
-     */
-    public void runCooperatesAnalysis(String queryString, List<String> filterSummary) {
-        transitionTo(WorkspaceState.COOPERATES_ANALYZING);
-
-        java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean(false);
-        loadingView.setCancellable(true, () -> cancelled.set(true));
-        loadingView.resetProgress();
-
-        new Thread(() -> {
-            try {
-                HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
-                ProgramSearchService searchService = ProgramSearchService.builder()
-                        .httpClient(httpClient)
-                        .build();
-                CooperateAnalysisService analysisService = CooperateAnalysisService.builder()
-                        .baseUrl(ServerConfig.BASE_URL)
-                        .searchService(searchService)
-                        .build();
-
-                CooperateAnalysisResult result = analysisService.analyze(queryString,
-                        (status, current, total) -> javafx.application.Platform.runLater(
-                                () -> updateProgress(status, current, total)),
-                        cancelled::get);
-
-                javafx.application.Platform.runLater(() -> {
-                    if (result.isSuccess()) {
-                        onCooperatesAnalysisComplete(result);
-                    } else {
-                        onCooperatesAnalysisFailed(result.getErrorMessage().orElse("Неизвестная ошибка анализа"));
-                    }
+    private void loadFilters(Section section) {
+        boolean programs = section == registry;
+        FiltersView view = programs ? filters : agreementsFilters;
+        start(section, programs ? LOADING_FILTERS : COOPERATES_LOADING_FILTERS, "Загрузка фильтров…", false,
+                request -> {
+                    FilterPageResult page = FilterPageLoader.builder().httpClient(request.client)
+                            .baseUrl(ServerConfig.BASE_URL).path(programs ? "programs/" : "cooperates/")
+                            .build().load();
+                    if (!page.isSuccess()) throw new IllegalStateException(page.getErrorMessage().orElse("Ошибка загрузки фильтров"));
+                    FilterParser.ParseResult parsed = FilterParser.parse(page.getHtml());
+                    if (!parsed.isSuccess()) throw new IllegalStateException(parsed.getErrorMessage().orElse("Ошибка разбора фильтров"));
+                    return parsed.getGroups();
+                }, (List<FilterGroup> groups) -> {
+                    section.hasFilters = true;
+                    view.setFilters(groups);
+                    remember(section, programs ? FILTERS_READY : COOPERATES_FILTERS_READY, view);
                 });
-            } catch (Exception e) {
-                javafx.application.Platform.runLater(() ->
-                        onCooperatesAnalysisFailed("Ошибка: " + e.getMessage()));
+    }
+
+    public void onBackToFilters() {
+        if (!authenticated()) return;
+        if (filterSection == agreements) showCooperatesFilters();
+        else back(registry, FILTERS_READY, filters);
+    }
+
+    public void showCooperatesFilters() {
+        back(agreements, COOPERATES_FILTERS_READY, agreementsFilters);
+    }
+
+    private void back(Section section, WorkspaceState state, FiltersView view) {
+        if (!authenticated()) return;
+        select(section);
+        if (section.state == null || section.state == LOADING_FILTERS || section.state == COOPERATES_LOADING_FILTERS) {
+            openSearchSection(section);
+        } else if (!section.hasFilters) {
+            loadFilters(section);
+        } else {
+            section.invalidate();
+            remember(section, state, view);
+        }
+    }
+
+    public void showFavorites() {
+        if (!authenticated()) return;
+        select(null);
+        show(FAVORITES, favorites);
+    }
+
+    public void showInstitutionDetail(com.rmc.favorites.FavoriteInstitution favorite) {
+        if (!authenticated()) return;
+        InstitutionDetailView detail = new InstitutionDetailView(this);
+        select(null);
+        show(INSTITUTION_DETAIL, detail);
+        detail.showInstitution(favorite);
+    }
+
+    public void showRmcAi() {
+        if (!authenticated()) return;
+        select(null);
+        show(RMC_AI, ai);
+    }
+
+    public void runAnalysis(String query, List<String> summary) {
+        if (!authenticated()) return;
+        select(registry);
+        start(registry, ANALYZING, "Анализ программ…", true, request -> {
+            var service = ProgramAnalysisService.builder().baseUrl(ServerConfig.BASE_URL).searchService(request.search()).build();
+            var result = service.analyze(query, request::progress, () -> request.cancelled);
+            if (!result.isSuccess()) throw new IllegalStateException(result.getErrorMessage().orElse("Ошибка анализа программ"));
+            return result;
+        }, result -> {
+            if (!result.isCancelled()) {
+                SearchHistoryService.add(query, summary, result.getTotalPrograms(), result.getTotalInstitutions());
+                if (dashboard != null) dashboard.refreshHistory();
             }
-        }).start();
-    }
-
-    private void onCooperatesAnalysisComplete(CooperateAnalysisResult result) {
-        transitionTo(WorkspaceState.COOPERATES_RESULTS,
-                () -> cooperatesResultsView.setResult(result));
-    }
-
-    private void onCooperatesAnalysisFailed(String error) {
-        transitionTo(WorkspaceState.ERROR,
-                () -> ((ErrorView) currentView).setError("Ошибка анализа «Соглашения»: " + error));
-    }
-
-    /**
-     * Перейти на раздел "Параметры РМЦ": данные трёх страниц сайта
-     * (параметры муниципалитета, групп сертификатов, потенциальный
-     * баланс) по общему фильтру. При первом переходе за сессию загружает
-     * формы фильтров всех трёх страниц и сразу показывает все данные без
-     * фильтров; повторные переходы просто показывают готовый экран.
-     */
-    public void showParamsSection() {
-        if (paramsMapper != null) {
-            transitionTo(WorkspaceState.PARAMS_READY);
-            return;
-        }
-
-        // Одно и то же состояние (и один и тот же экран загрузки) на всё
-        // время первой загрузки — и фильтров, и самих данных.
-        transitionTo(WorkspaceState.PARAMS_ANALYZING);
-        loadingView.setCancellable(false, null);
-        loadingView.resetProgress();
-        loadingView.setStatus("Загрузка фильтров раздела «Параметры РМЦ»...");
-
-        new Thread(() -> {
-            try {
-                HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
-                Map<ParamsPage, List<FilterGroup>> groupsByPage = new EnumMap<>(ParamsPage.class);
-
-                for (ParamsPage page : ParamsPage.values()) {
-                    FilterPageResult pageResult = FilterPageLoader.builder()
-                            .httpClient(httpClient)
-                            .baseUrl(ServerConfig.BASE_URL)
-                            .path(page.getPath())
-                            .build()
-                            .load();
-                    if (!pageResult.isSuccess()) {
-                        String message = "«" + page.getTitle() + "»: "
-                                + pageResult.getErrorMessage().orElse("не удалось загрузить страницу фильтров");
-                        javafx.application.Platform.runLater(() -> onParamsFailed(message));
-                        return;
-                    }
-                    FilterParser.ParseResult parseResult = FilterParser.parse(pageResult.getHtml());
-                    if (!parseResult.isSuccess()) {
-                        String message = "«" + page.getTitle() + "»: "
-                                + parseResult.getErrorMessage().orElse("не удалось разобрать фильтры");
-                        javafx.application.Platform.runLater(() -> onParamsFailed(message));
-                        return;
-                    }
-                    groupsByPage.put(page, parseResult.getGroups());
-                }
-
-                ParamsFilterMapper mapper = ParamsFilterMapper.build(groupsByPage);
-                javafx.application.Platform.runLater(() -> {
-                    paramsMapper = mapper;
-                    paramsFiltersView.setFilters(mapper.getUnifiedGroups());
-                    runParamsAnalysis(emptyParamsQueries(), List.of());
-                });
-            } catch (Exception e) {
-                javafx.application.Platform.runLater(() -> onParamsFailed("Ошибка: " + e.getMessage()));
-            }
-        }).start();
-    }
-
-    private static Map<ParamsPage, String> emptyParamsQueries() {
-        Map<ParamsPage, String> queries = new EnumMap<>(ParamsPage.class);
-        for (ParamsPage page : ParamsPage.values()) {
-            queries.put(page, "");
-        }
-        return queries;
-    }
-
-    /**
-     * Открывает окно с общими фильтрами раздела "Параметры РМЦ" (кнопка
-     * "Фильтры" на экране раздела). Выбор действует сразу на все три
-     * страницы сайта.
-     */
-    public void showParamsFilters() {
-        if (paramsMapper == null || paramsFiltersDialog != null) {
-            return;
-        }
-        javafx.scene.control.Dialog<javafx.scene.control.ButtonType> dialog = new javafx.scene.control.Dialog<>();
-        dialog.setTitle("Фильтры — Параметры РМЦ");
-        if (getScene() != null) {
-            dialog.initOwner(getScene().getWindow());
-        }
-        dialog.getDialogPane().getStylesheets().add(
-                getClass().getResource("/styles/dashboard.css").toExternalForm());
-        dialog.getDialogPane().getStylesheets().add(
-                getClass().getResource("/styles/dashboard-dark.css").toExternalForm());
-        dialog.getDialogPane().getStyleClass().add("app-dialog");
-        if (ThemeService.isDarkMode()) {
-            dialog.getDialogPane().getStyleClass().add("dark-theme");
-        }
-        dialog.getDialogPane().setPrefSize(760, 640);
-        dialog.getDialogPane().setContent(paramsFiltersView);
-        dialog.getDialogPane().getButtonTypes().add(javafx.scene.control.ButtonType.CLOSE);
-        dialog.setOnHidden(e -> {
-            dialog.getDialogPane().setContent(null);
-            paramsFiltersDialog = null;
+            results.setResult(result);
+            remember(registry, RESULTS, results);
         });
-        paramsFiltersDialog = dialog;
-        dialog.show();
     }
 
-    private void applyParamsFilters() {
-        if (paramsMapper == null || paramsFiltersView.getFilterSession() == null) {
-            return;
-        }
-        com.rmc.filters.session.FilterSession session = paramsFiltersView.getFilterSession();
-        Map<ParamsPage, String> queries = paramsMapper.buildQueries(session);
-        List<String> summary = session.getActiveFiltersSummary();
-        if (paramsFiltersDialog != null) {
-            paramsFiltersDialog.close();
-        }
-        runParamsAnalysis(queries, summary);
+    public void runCooperatesAnalysis(String query, List<String> summary) {
+        if (!authenticated()) return;
+        select(agreements);
+        start(agreements, COOPERATES_ANALYZING, "Анализ соглашений…", true, request -> {
+            var service = CooperateAnalysisService.builder().baseUrl(ServerConfig.BASE_URL).searchService(request.search()).build();
+            var result = service.analyze(query, request::progress, () -> request.cancelled);
+            if (!result.isSuccess()) throw new IllegalStateException(result.getErrorMessage().orElse("Ошибка анализа соглашений"));
+            return result;
+        }, result -> {
+            agreementsResults.setResult(result);
+            remember(agreements, COOPERATES_RESULTS, agreementsResults);
+        });
     }
 
-    private void runParamsAnalysis(Map<ParamsPage, String> queries, List<String> filterSummary) {
-        transitionTo(WorkspaceState.PARAMS_ANALYZING);
+    public void showParamsSection() {
+        if (!authenticated()) return;
+        select(params);
+        if (params.request != null) return;
+        start(params, PARAMS_ANALYZING, "Загрузка параметров РМЦ…", true, request -> {
+            var result = new ParamsAnalysisService(request.search()).analyze(Map.of(), request::progress, () -> request.cancelled);
+            if (!result.isSuccess()) throw new IllegalStateException(result.getErrorMessage().orElse("Ошибка загрузки параметров"));
+            return result;
+        }, result -> {
+            paramsView.setResult(result);
+            remember(params, PARAMS_READY, paramsView);
+        });
+    }
 
-        java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean(false);
-        loadingView.setCancellable(true, () -> cancelled.set(true));
-        loadingView.resetProgress();
-        loadingView.setStatus("Загрузка данных раздела «Параметры РМЦ»...");
-
-        new Thread(() -> {
+    private <T> void start(Section section, WorkspaceState state, String message, boolean canCancel,
+                           Function<Request, T> work, Consumer<T> complete) {
+        section.invalidate();
+        Request request = new Request(section);
+        section.request = request;
+        section.loading.resetProgress();
+        section.loading.setStatus(message);
+        section.loading.setCancellable(canCancel, () -> request.cancelled = true);
+        remember(section, state, section.loading);
+        Thread thread = new Thread(() -> {
             try {
-                HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
-                ProgramSearchService searchService = ProgramSearchService.builder()
-                        .httpClient(httpClient)
-                        .build();
-                ParamsAnalysisResult result = new ParamsAnalysisService(searchService).analyze(queries,
-                        (status, current, total) -> javafx.application.Platform.runLater(
-                                () -> updateProgress(status, current, total)),
-                        cancelled::get);
-
-                javafx.application.Platform.runLater(() -> {
-                    if (result.isSuccess()) {
-                        transitionTo(WorkspaceState.PARAMS_READY,
-                                () -> paramsView.setResult(result, filterSummary));
-                    } else {
-                        onParamsFailed(result.getErrorMessage().orElse("Неизвестная ошибка"));
-                    }
+                T result = work.apply(request);
+                Platform.runLater(() -> {
+                    if (section.request != request) return;
+                    section.request = null;
+                    complete.accept(result);
                 });
-            } catch (Exception e) {
-                javafx.application.Platform.runLater(() -> onParamsFailed("Ошибка: " + e.getMessage()));
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    if (section.request != request) return;
+                    section.request = null;
+                    section.error = ex.getMessage();
+                    section.retry = () -> start(section, state, message, canCancel, work, complete);
+                    remember(section, ERROR, error);
+                });
             }
-        }).start();
+        }, "rmc-" + state.name());
+        thread.setDaemon(true);
+        thread.start();
     }
 
-    private void onParamsFailed(String error) {
-        transitionTo(WorkspaceState.ERROR,
-                () -> ((ErrorView) currentView).setError("Ошибка раздела «Параметры РМЦ»: " + error));
+    public void onRetry() {
+        if (authenticated() && active != null && active.retry != null) active.retry.run();
     }
 
     public WorkspaceState getCurrentState() {

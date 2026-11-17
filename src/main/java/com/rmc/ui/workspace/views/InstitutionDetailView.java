@@ -120,7 +120,10 @@ public class InstitutionDetailView extends VBox implements WorkspaceView {
         contentBox.setVisible(false);
         contentBox.setManaged(false);
         
-        getChildren().addAll(backButton, titleLabel, loadingBox, contentBox);
+        Button filters = new Button("Назад к фильтрам");
+        filters.getStyleClass().add("action-button-secondary");
+        filters.setOnAction(e -> container.onBackToFilters());
+        getChildren().addAll(new HBox(8, backButton, filters), titleLabel, loadingBox, contentBox);
     }
     
     @Override
@@ -147,8 +150,8 @@ public class InstitutionDetailView extends VBox implements WorkspaceView {
         totalsRow.getChildren().clear();
         programsList.getChildren().clear();
         
+        HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
         new Thread(() -> {
-            HttpClientService httpClient = ApplicationState.getInstance().getHttpClient();
             ProgramSearchService searchService = ProgramSearchService.builder()
                     .httpClient(httpClient)
                     .build();

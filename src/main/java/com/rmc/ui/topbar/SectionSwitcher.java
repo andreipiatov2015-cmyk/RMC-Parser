@@ -73,6 +73,10 @@ public class SectionSwitcher extends HBox {
         setActive(registryPill);
     }
 
+    void selectSection(boolean agreements, boolean params) {
+        setActive(params ? paramsPill : agreements ? cooperatesPill : registryPill);
+    }
+
     private void setActive(Pill active) {
         registryPill.setActive(active == registryPill);
         cooperatesPill.setActive(active == cooperatesPill);

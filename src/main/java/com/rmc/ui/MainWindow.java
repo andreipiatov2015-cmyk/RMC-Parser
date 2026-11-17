@@ -60,7 +60,7 @@ public class MainWindow extends BorderPane {
         setupLayout();
         
         // Связываем компоненты друг с другом
-        workspace.setReferences(dashboard, statusBar);
+        workspace.setReferences(dashboard, topBar);
         dashboard.setWorkspace(workspace);
         
         // Смена пользователя — на экран выбора учётной записи
@@ -90,14 +90,24 @@ public class MainWindow extends BorderPane {
             workspace.promptReloginFor(username);
         });
         
+        setSessionControlsEnabled(ApplicationState.getInstance().isAuthenticated());
+
         // Listen for auth state changes
         ApplicationState.getInstance().addAuthStateListener(event -> {
+            setSessionControlsEnabled(event.isAuthenticated());
             workspace.onAuthStateChanged();
             dashboard.onAuthStateChanged();
             topBar.onAuthStateChanged();
         });
     }
     
+    private void setSessionControlsEnabled(boolean enabled) {
+        topBar.setDisable(!enabled);
+        dashboard.setDisable(!enabled);
+        statusBar.setDisable(!enabled);
+        statusBar.setConnected(enabled);
+    }
+
     private void setupLayout() {
         // Top: TopBar (48px height)
         setTop(topBar);

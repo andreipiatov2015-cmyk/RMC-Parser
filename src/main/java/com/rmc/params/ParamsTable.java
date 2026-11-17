@@ -56,6 +56,9 @@ public final class ParamsTable {
                 "Физкультурно-спортивная", "Художественная", "Туристско-краеведческая", "Социально-гуманитарная"}) {
             c.add(new Column(KIT, s, t));
         }
+        for (String direction : TerritoryPrices.FIELDS.values()) {
+            c.add(new Column(TerritoryPrices.TITLE, direction, t));
+        }
         c.add(new Column(CERTS, "Число действующих сертификатов", t));
         c.add(new Column(CERTS, "Детей в возрасте от 5-ти до 18-ти лет", t));
         ParamsPage g = ParamsPage.CERT_GROUP;
@@ -97,7 +100,7 @@ public final class ParamsTable {
                 case CERT_GROUP -> group;
                 case CERT_BALANCE -> bal;
             };
-            values.add(source.getOrDefault(key(col.label()), ""));
+            values.add(source.getOrDefault(metricKey(col.group(), col.label()), ""));
         }
         return new Row(ty.getTerritory(), ty.getYear(), groupName, values);
     }
@@ -107,11 +110,17 @@ public final class ParamsTable {
         for (ParamsCard card : cards) {
             for (ParamsCard.Section section : card.getSections()) {
                 for (ParamsCard.Row r : section.rows()) {
-                    map.putIfAbsent(key(r.label()), r.value());
+                    map.putIfAbsent(metricKey(section.title(), r.label()), r.value());
                 }
             }
         }
         return map;
+    }
+
+    private static String metricKey(String group, String label) {
+        // Older summary cards sometimes omit the heading. Only the new group
+        // needs a namespace to distinguish identically named directions.
+        return TerritoryPrices.TITLE.equals(group) ? group + "/" + key(label) : key(label);
     }
 
     private static String key(String label) {

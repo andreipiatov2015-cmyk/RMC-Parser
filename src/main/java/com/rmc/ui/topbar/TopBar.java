@@ -193,6 +193,10 @@ public class TopBar extends HBox {
         sectionSwitcher.setOnShowParams(handler);
     }
     
+    public void selectSection(boolean agreements, boolean params) {
+        sectionSwitcher.selectSection(agreements, params);
+    }
+
     public void onAuthStateChanged() {
         refreshUserBlock();
     }

@@ -140,7 +140,7 @@ public class AccountPickerView extends VBox implements WorkspaceView {
         }
         
         card.getChildren().addAll(avatar, nameBox);
-        card.setOnMouseClicked(e -> attemptAutoLogin(account, card));
+        card.setOnMouseClicked(e -> attemptAutoLogin(account));
         
         Label removeButton = new Label("×");
         removeButton.getStyleClass().add("account-card-remove");
@@ -258,14 +258,14 @@ public class AccountPickerView extends VBox implements WorkspaceView {
         return avatar;
     }
     
-    private void attemptAutoLogin(SavedAccount account, Pane card) {
+    private void attemptAutoLogin(SavedAccount account) {
         showStatus("Вход как " + account.getUsername() + "...");
-        card.setDisable(true);
+        setDisable(true);
         
         Optional<String> passwordOpt = AccountStorageService.decryptPassword(account);
         if (passwordOpt.isEmpty()) {
             showStatus("Не удалось расшифровать сохранённый пароль. Войдите вручную.");
-            card.setDisable(false);
+            setDisable(false);
             return;
         }
         String password = passwordOpt.get();
@@ -280,7 +280,7 @@ public class AccountPickerView extends VBox implements WorkspaceView {
                         provider.authenticate(account.getUsername(), password);
                 
                 javafx.application.Platform.runLater(() -> {
-                    card.setDisable(false);
+                    setDisable(false);
                     if (result.isSuccess()) {
                         ApplicationState.getInstance()
                                 .login(account.getUsername(), result.getHttpClient().orElse(httpClient));
@@ -295,7 +295,7 @@ public class AccountPickerView extends VBox implements WorkspaceView {
             } catch (Exception e) {
                 logger.error("Ошибка автоматического входа", e);
                 javafx.application.Platform.runLater(() -> {
-                    card.setDisable(false);
+                    setDisable(false);
                     showStatus("Ошибка: " + e.getMessage());
                 });
             }

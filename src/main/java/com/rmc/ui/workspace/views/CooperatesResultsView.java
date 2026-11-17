@@ -129,7 +129,7 @@ public class CooperatesResultsView extends VBox implements WorkspaceView {
 
         backButton = new ActionButton("Назад к фильтрам", ActionButton.Style.SECONDARY);
         backButton.setGraphic(TablerIcon.of(TablerIcons.ARROW_LEFT, 14));
-        backButton.setOnAction(e -> container.showCooperatesSection());
+        backButton.setOnAction(e -> container.showCooperatesFilters());
 
         exportButton = new ActionButton("Экспорт в Excel", ActionButton.Style.PRIMARY);
         exportButton.setGraphic(TablerIcon.onPrimary(TablerIcons.DOWNLOAD, 14));

@@ -104,7 +104,10 @@ public class AuthView extends VBox implements WorkspaceView {
         progressRow.setVisible(false);
         progressRow.setManaged(false);
         
-        card.getChildren().addAll(title, errorLabel, loginField, passwordField, loginButton, progressRow);
+        javafx.scene.control.Button accounts = new javafx.scene.control.Button("Выбрать сохранённый аккаунт");
+        accounts.disableProperty().bind(loginButton.disableProperty());
+        accounts.setOnAction(e -> container.showAccountPicker());
+        card.getChildren().addAll(title, errorLabel, loginField, passwordField, loginButton, accounts, progressRow);
         getChildren().add(card);
     }
     
