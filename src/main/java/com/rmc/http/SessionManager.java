@@ -94,7 +94,7 @@ public class SessionManager {
         HttpCookie cookie = new HttpCookie(name, value);
         try {
             cookieManager.getCookieStore().add(uri, cookie);
-            logger.debug("Added cookie {}={} for {}", name, value, uri);
+            logger.debug("Added cookie {} for {}", name, uri);
         } catch (Exception e) {
             logger.warn("Failed to add cookie: {}", e.getMessage());
         }

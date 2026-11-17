@@ -1,5 +1,6 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
+cd /d "%~dp0" || exit /b 1
 
 rem ============================================================
 rem RMC Framework - Windows installer (.exe) build script
@@ -56,7 +57,7 @@ if errorlevel 1 (
 
 echo [3/5] Locating the built jar file...
 set MAIN_JAR=
-for %%f in (target\rmc-framework-*.jar) do set MAIN_JAR=%%~nxf
+for %%f in (target\rmc-framework-*.jar) do if exist "%%f" set "MAIN_JAR=%%~nxf"
 
 if "%MAIN_JAR%"=="" (
     echo ERROR: target\rmc-framework-*.jar not found - check that the Maven build succeeded.
@@ -73,9 +74,9 @@ echo     Found: %MAIN_JAR% - version %APP_VERSION%
 
 echo [4/5] Preparing a clean input folder for jpackage...
 if exist target\jpackage-input rmdir /s /q target\jpackage-input
-mkdir target\jpackage-input
-copy /y "target\%MAIN_JAR%" "target\jpackage-input\" >nul
-xcopy /y /i /e "target\libs" "target\jpackage-input\libs\" >nul
+mkdir target\jpackage-input || exit /b 1
+copy /y "target\%MAIN_JAR%" "target\jpackage-input\" >nul || exit /b 1
+xcopy /y /i /e "target\libs" "target\jpackage-input\libs\" >nul || exit /b 1
 
 if not exist "%ICON%" (
     echo WARNING: icon file %ICON% not found - the installer will use a default icon.
