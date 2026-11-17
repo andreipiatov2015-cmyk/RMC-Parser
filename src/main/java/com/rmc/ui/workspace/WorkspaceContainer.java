@@ -43,6 +43,7 @@ public class WorkspaceContainer extends StackPane {
     private Section filterSection;
     private WorkspaceState currentState;
     private WorkspaceView currentView;
+    private final String baseUrl;
     private Dashboard dashboard;
     private TopBar topBar;
 
@@ -89,6 +90,11 @@ public class WorkspaceContainer extends StackPane {
     }
 
     public WorkspaceContainer() {
+        this(ServerConfig.BASE_URL);
+    }
+
+    WorkspaceContainer(String baseUrl) {
+        this.baseUrl = baseUrl;
         getStyleClass().add("workspace");
         setPadding(new Insets(16));
         transitionTo(AccountPickerView.hasSavedAccounts() ? ACCOUNT_PICKER : AUTH);
@@ -194,7 +200,7 @@ public class WorkspaceContainer extends StackPane {
         start(section, programs ? LOADING_FILTERS : COOPERATES_LOADING_FILTERS, "Загрузка фильтров…", false,
                 request -> {
                     FilterPageResult page = FilterPageLoader.builder().httpClient(request.client)
-                            .baseUrl(ServerConfig.BASE_URL).path(programs ? "programs/" : "cooperates/")
+                            .baseUrl(baseUrl).path(programs ? "programs/" : "cooperates/")
                             .build().load();
                     if (!page.isSuccess()) throw new IllegalStateException(page.getErrorMessage().orElse("Ошибка загрузки фильтров"));
                     FilterParser.ParseResult parsed = FilterParser.parse(page.getHtml());
@@ -254,7 +260,7 @@ public class WorkspaceContainer extends StackPane {
         if (!authenticated()) return;
         select(registry);
         start(registry, ANALYZING, "Анализ программ…", true, request -> {
-            var service = ProgramAnalysisService.builder().baseUrl(ServerConfig.BASE_URL).searchService(request.search()).build();
+            var service = ProgramAnalysisService.builder().baseUrl(baseUrl).searchService(request.search()).build();
             var result = service.analyze(query, request::progress, () -> request.cancelled);
             if (!result.isSuccess()) throw new IllegalStateException(result.getErrorMessage().orElse("Ошибка анализа программ"));
             return result;
@@ -272,7 +278,7 @@ public class WorkspaceContainer extends StackPane {
         if (!authenticated()) return;
         select(agreements);
         start(agreements, COOPERATES_ANALYZING, "Анализ соглашений…", true, request -> {
-            var service = CooperateAnalysisService.builder().baseUrl(ServerConfig.BASE_URL).searchService(request.search()).build();
+            var service = CooperateAnalysisService.builder().baseUrl(baseUrl).searchService(request.search()).build();
             var result = service.analyze(query, request::progress, () -> request.cancelled);
             if (!result.isSuccess()) throw new IllegalStateException(result.getErrorMessage().orElse("Ошибка анализа соглашений"));
             return result;
