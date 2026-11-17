@@ -1,6 +1,12 @@
 package com.rmc.version;
 
 import org.junit.jupiter.api.Test;
+import org.xml.sax.InputSource;
+
+import javax.xml.xpath.XPathFactory;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -10,20 +16,15 @@ import static org.junit.jupiter.api.Assertions.*;
 class VersionServiceTest {
 
     @Test
-    void testGetCurrentVersion() {
-        Version version = VersionService.getCurrentVersion();
-        
-        assertNotNull(version);
-        assertEquals(0, version.getMajor());
-        assertEquals(1, version.getMinor());
-        assertEquals(0, version.getPatch());
-    }
+    void currentVersionMatchesMavenBuild() throws Exception {
+        String buildVersion;
+        try (InputStream pom = Files.newInputStream(Path.of("pom.xml"))) {
+            buildVersion = XPathFactory.newInstance().newXPath()
+                    .evaluate("/*[local-name()='project']/*[local-name()='version']", new InputSource(pom)).trim();
+        }
 
-    @Test
-    void testGetCurrentVersionString() {
-        String versionString = VersionService.getCurrentVersionString();
-        
-        assertEquals("0.1.0", versionString);
+        assertEquals(buildVersion, VersionService.getCurrentVersionString());
+        assertEquals(VersionParser.parse(buildVersion), VersionService.getCurrentVersion());
     }
 
     @Test
