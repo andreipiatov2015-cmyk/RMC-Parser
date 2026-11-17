@@ -48,10 +48,14 @@ public class ParamsAnalysisService {
         }
     }
 
-    private final ProgramSearchService searchService;
+    private final java.util.function.Function<String, SearchResult> fetch;
 
     public ParamsAnalysisService(ProgramSearchService searchService) {
-        this.searchService = searchService;
+        this(searchService::search);
+    }
+
+    ParamsAnalysisService(java.util.function.Function<String, SearchResult> fetch) {
+        this.fetch = fetch;
     }
 
     public ParamsAnalysisResult analyze(Map<ParamsPage, String> queries, ProgressListener listener,
@@ -94,6 +98,22 @@ public class ParamsAnalysisService {
             }
         }
 
+        Source territories = sources.stream().filter(source -> source.page == ParamsPage.TERR).findFirst().orElseThrow();
+        for (int i = 0; i < territories.cards.size(); i++) {
+            if (isCancelled.getAsBoolean()) return cancelled(sources);
+            ParamsCard card = territories.cards.get(i);
+            report(listener, "Параметры муниципалитета: " + card.getTitle(), i, territories.cards.size());
+            try {
+                String url = TerritoryPrices.detailUrl(card);
+                SearchResult detail = fetch.apply(url);
+                if (!detail.isSuccess() || detail.getStatusCode() != 200) {
+                    throw new IllegalStateException(detail.getErrorMessage().orElse("HTTP " + detail.getStatusCode()));
+                }
+                territories.cards.set(i, card.withSection(TerritoryPrices.parse(detail.getHtml())));
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                return ParamsAnalysisResult.failure("Карточка «" + card.getTitle() + "»: " + ex.getMessage());
+            }
+        }
         return ParamsAnalysisResult.success(collect(sources), false);
     }
 
@@ -101,12 +121,15 @@ public class ParamsAnalysisService {
     private String loadNext(Source source) {
         int pageNumber = source.loadedPages + 1;
         String url = buildUrl(source, pageNumber);
-        SearchResult result = searchService.search(url);
+        SearchResult result = fetch.apply(url);
         if (!result.isSuccess()) {
             logger.error("Ошибка загрузки {} (страница {}): {}", source.page.getTitle(), pageNumber,
                     result.getErrorMessage().orElse(""));
             return "Не удалось загрузить «" + source.page.getTitle() + "» (страница " + pageNumber + "): "
                     + result.getErrorMessage().orElse("неизвестная ошибка");
+        }
+        if (result.getStatusCode() != 200 || org.jsoup.Jsoup.parse(result.getHtml()).selectFirst("input[type=password]") != null) {
+            return "Страница «" + source.page.getTitle() + "» недоступна. Проверьте вход в РМЦ.";
         }
         ParamsCardParser.PageResult parsed = ParamsCardParser.parse(source.page, result.getHtml());
         source.cards.addAll(parsed.cards());

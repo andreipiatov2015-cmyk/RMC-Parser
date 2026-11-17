@@ -42,6 +42,13 @@ public class ParamsCard {
         this.sections = List.copyOf(sections);
     }
 
+    ParamsCard withSection(Section section) {
+        var enriched = new java.util.ArrayList<>(sections);
+        enriched.removeIf(existing -> existing.title().equals(section.title()));
+        enriched.add(section);
+        return new ParamsCard(page, id, url, title, territory, year, groupName, statusText, active, enriched);
+    }
+
     public ParamsPage getPage() {
         return page;
     }

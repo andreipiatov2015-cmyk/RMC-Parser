@@ -156,12 +156,4 @@ public class LoadingView extends VBox implements WorkspaceView {
         return this;
     }
     
-    @Override
-    public void onExit() {
-        // Сбрасываем на случай, если этот экран покажут заново для другой
-        // операции без явного вызова setCancellable() — не хотим унести
-        // отмену в контекст, где она уже не имеет смысла.
-        setCancellable(false, null);
-        resetProgress();
-    }
 }

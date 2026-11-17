@@ -74,7 +74,7 @@ public class RmcAiView extends VBox implements WorkspaceView {
         Label comingSoon = new Label("(пока недоступно — в разработке)");
         comingSoon.getStyleClass().add("status-item");
 
-        Button backButton = new Button("Назад");
+        Button backButton = new Button("Назад к фильтрам");
         backButton.setGraphic(TablerIcon.of(TablerIcons.ARROW_LEFT, 14));
         backButton.getStyleClass().add("action-button-secondary");
         backButton.setOnAction(e -> container.onBackToFilters());

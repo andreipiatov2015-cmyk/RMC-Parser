@@ -62,7 +62,6 @@ public class ParamsView extends VBox implements WorkspaceView {
 
     private final WorkspaceContainer container;
 
-    private final ActionButton filtersButton;
     private final ActionButton modeButton;
     private final TableView<ParamsTable.Row> tableView = new TableView<>();
     private final StackPane contentHolder = new StackPane();
@@ -71,14 +70,12 @@ public class ParamsView extends VBox implements WorkspaceView {
     private final HBox toggleRow;
     private boolean tableMode = true;
     private final TextField summaryLabel;
-    private final Label activeFiltersLabel;
     private final VBox territoriesList;
     private final VBox detailsList;
     private final ActionButton exportButton;
     private final ActionButton copyButton;
 
     private ParamsAnalysisResult currentResult;
-    private List<String> currentFilterSummary = List.of();
     private final List<VBox> territoryRows = new ArrayList<>();
 
     public ParamsView(WorkspaceContainer container) {
@@ -91,9 +88,6 @@ public class ParamsView extends VBox implements WorkspaceView {
         title.setGraphic(TablerIcon.of(TablerIcons.CLIPBOARD_LIST, 20));
         title.getStyleClass().add("results-title");
 
-        filtersButton = new ActionButton("Фильтры", ActionButton.Style.PRIMARY);
-        filtersButton.setGraphic(TablerIcon.onPrimary(TablerIcons.FILTER, 14));
-        filtersButton.setOnAction(e -> container.showParamsFilters());
 
         modeButton = new ActionButton("", ActionButton.Style.SECONDARY);
         modeButton.setOnAction(e -> setTableMode(!tableMode));
@@ -101,14 +95,11 @@ public class ParamsView extends VBox implements WorkspaceView {
         summaryLabel = SelectableText.field("", "results-summary");
         HBox.setHgrow(summaryLabel, Priority.ALWAYS);
 
-        HBox topRow = new HBox(16, filtersButton, modeButton, summaryLabel);
+        HBox topRow = new HBox(16, modeButton, summaryLabel);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
-        activeFiltersLabel = new Label();
-        activeFiltersLabel.getStyleClass().add("filters-status");
-        activeFiltersLabel.setWrapText(true);
 
-        VBox topSection = new VBox(8, topRow, activeFiltersLabel, new Separator());
+        VBox topSection = new VBox(8, topRow, new Separator());
 
         territoriesList = new VBox();
         territoriesList.setSpacing(8);
@@ -209,9 +200,8 @@ public class ParamsView extends VBox implements WorkspaceView {
         return pane;
     }
 
-    public void setResult(ParamsAnalysisResult result, List<String> filterSummary) {
+    public void setResult(ParamsAnalysisResult result) {
         this.currentResult = (result != null && result.isSuccess()) ? result : null;
-        this.currentFilterSummary = filterSummary == null ? List.of() : filterSummary;
         exportButton.setDisable(currentResult == null);
         copyButton.setDisable(currentResult == null);
 
@@ -220,12 +210,6 @@ public class ParamsView extends VBox implements WorkspaceView {
             return;
         }
         tableView.getItems().setAll(ParamsTable.from(currentResult).getRows());
-
-        int active = currentFilterSummary.size();
-        filtersButton.setText(active > 0 ? "Фильтры (" + active + ")" : "Фильтры");
-        activeFiltersLabel.setText(active > 0
-                ? "Фильтры: " + String.join("; ", currentFilterSummary)
-                : "Фильтры не выбраны — показаны все данные");
 
         summaryLabel.setText("Территорий (с годом): " + currentResult.getTerritoryYears().size()
                 + "  |  Карточек: " + currentResult.getTotalCards()
@@ -244,7 +228,7 @@ public class ParamsView extends VBox implements WorkspaceView {
 
         if (currentResult.getTerritoryYears().isEmpty()) {
             detailsList.getChildren().setAll(
-                    SelectableText.field("По выбранным фильтрам данных нет", "results-institution-stats"));
+                    SelectableText.field("Данных нет", "results-institution-stats"));
         } else {
             select(0);
         }
@@ -252,7 +236,6 @@ public class ParamsView extends VBox implements WorkspaceView {
 
     private void showPlaceholder() {
         summaryLabel.setText("Данные появятся после загрузки");
-        activeFiltersLabel.setText("");
         territoriesList.getChildren().clear();
         detailsList.getChildren().clear();
         territoryRows.clear();
@@ -410,7 +393,6 @@ public class ParamsView extends VBox implements WorkspaceView {
         StringBuilder sb = new StringBuilder();
         sb.append("Параметры РМЦ").append(nl);
         sb.append(summaryLabel.getText()).append(nl);
-        sb.append(activeFiltersLabel.getText()).append(nl).append(nl);
 
         for (ParamsAnalysisResult.TerritoryYear ty : currentResult.getTerritoryYears()) {
             sb.append("== ").append(territoryTitle(ty)).append(" ==").append(nl);
