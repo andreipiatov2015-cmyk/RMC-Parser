@@ -47,12 +47,19 @@ public class ProgramDetailParser {
     }
     
     public static ParseResult parse(String html) {
+        return parse(html, new FederalProjectLabels());
+    }
+
+    public static ParseResult parse(String html, FederalProjectLabels projects) {
         if (html == null || html.isEmpty()) {
             return ParseResult.builder().success(false).errorMessage("HTML пуст или null").build();
         }
         
         try {
             Document document = Jsoup.parse(html);
+            if (document.selectFirst("form input[type=password]") != null) {
+                return ParseResult.builder().success(false).errorMessage("Требуется повторный вход в РМЦ").build();
+            }
             
             Map<String, Integer> stats = parseStats(document);
             Integer activeGroupsCount = parseActiveGroupsCount(document);
@@ -65,6 +72,7 @@ public class ProgramDetailParser {
                     .activeGroupsCount(activeGroupsCount)
                     .groups(groups)
                     .navigatorUrl(navigatorUrl)
+                    .federalProjects(projects.readFrom(document))
                     .build();
                     
         } catch (Exception e) {
@@ -201,6 +209,7 @@ public class ProgramDetailParser {
         private final Integer activeGroupsCount;
         private final List<ProgramGroup> groups;
         private final String navigatorUrl;
+        private final List<String> federalProjects;
 
         private ParseResult(Builder builder) {
             this.success = builder.success;
@@ -209,6 +218,7 @@ public class ProgramDetailParser {
             this.activeGroupsCount = builder.activeGroupsCount;
             this.groups = List.copyOf(builder.groups);
             this.navigatorUrl = builder.navigatorUrl;
+            this.federalProjects = List.copyOf(builder.federalProjects);
         }
         
         public static Builder builder() {
@@ -239,6 +249,10 @@ public class ProgramDetailParser {
             return Optional.ofNullable(navigatorUrl);
         }
 
+        public List<String> getFederalProjects() {
+            return federalProjects;
+        }
+
         public static class Builder {
 
             private boolean success;
@@ -247,6 +261,7 @@ public class ProgramDetailParser {
             private Integer activeGroupsCount;
             private List<ProgramGroup> groups = new ArrayList<>();
             private String navigatorUrl;
+            private List<String> federalProjects = List.of();
             
             public Builder success(boolean success) {
                 this.success = success;
@@ -275,6 +290,11 @@ public class ProgramDetailParser {
 
             public Builder navigatorUrl(String navigatorUrl) {
                 this.navigatorUrl = navigatorUrl;
+                return this;
+            }
+
+            public Builder federalProjects(List<String> federalProjects) {
+                this.federalProjects = federalProjects;
                 return this;
             }
 

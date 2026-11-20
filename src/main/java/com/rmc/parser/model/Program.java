@@ -23,6 +23,7 @@ public class Program {
     private final String price;
     private final String schedule;
     private final String imageUrl;
+    private final List<String> federalProjects;
     
     private Program(Builder builder) {
         this.id = builder.id;
@@ -38,6 +39,7 @@ public class Program {
         this.price = builder.price;
         this.schedule = builder.schedule;
         this.imageUrl = builder.imageUrl;
+        this.federalProjects = List.copyOf(builder.federalProjects);
     }
     
     public static Builder builder() {
@@ -95,6 +97,10 @@ public class Program {
     public Optional<String> getImageUrl() {
         return Optional.ofNullable(imageUrl);
     }
+
+    public List<String> getFederalProjects() {
+        return federalProjects;
+    }
     
     @Override
     public String toString() {
@@ -119,6 +125,7 @@ public class Program {
         private String price;
         private String schedule;
         private String imageUrl;
+        private List<String> federalProjects = List.of();
         
         public Builder id(String id) {
             this.id = id;
@@ -187,6 +194,11 @@ public class Program {
         
         public Builder imageUrl(String imageUrl) {
             this.imageUrl = imageUrl;
+            return this;
+        }
+
+        public Builder federalProjects(List<String> federalProjects) {
+            this.federalProjects = federalProjects;
             return this;
         }
         

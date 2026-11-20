@@ -74,6 +74,10 @@ public class ProgramParser {
      * @return результат парсинга
      */
     public static ParseResult parse(String html) {
+        return parse(html, new FederalProjectLabels());
+    }
+
+    public static ParseResult parse(String html, FederalProjectLabels projects) {
         logger.info(LOG_PARSING_START);
         
         if (html == null || html.isEmpty()) {
@@ -86,10 +90,11 @@ public class ProgramParser {
         
         try {
             Document document = Jsoup.parse(html);
+            projects.readFilterOptions(document);
             
             // Основной путь: реальная таблица программ на сайте
             // (<tr id="objXXXXX"> со ссылками /programs/{id}/ и /org/{id}/).
-            List<Program> programs = parseTableRows(document);
+            List<Program> programs = parseTableRows(document, projects);
             
             if (!programs.isEmpty()) {
                 logger.info(LOG_CARDS_FOUND, programs.size());
@@ -109,7 +114,7 @@ public class ProgramParser {
             logger.info(LOG_CARDS_FOUND, cards.size());
             
             for (Element card : cards) {
-                Program program = parseProgramCard(card);
+                Program program = parseProgramCard(card, projects);
                 if (program != null) {
                     programs.add(program);
                 }
@@ -139,12 +144,12 @@ public class ProgramParser {
      * сопоставляются не по номеру колонки (порядок может меняться), а по
      * подписи в &lt;p class="strong hide_on_desktop"&gt;.
      */
-    private static List<Program> parseTableRows(Document document) {
+    private static List<Program> parseTableRows(Document document, FederalProjectLabels projects) {
         List<Program> programs = new ArrayList<>();
         
         Elements rows = document.select("tr[id]");
         for (Element row : rows) {
-            Program program = parseTableRow(row);
+            Program program = parseTableRow(row, projects);
             if (program != null) {
                 programs.add(program);
             }
@@ -153,7 +158,7 @@ public class ProgramParser {
         return programs;
     }
     
-    private static Program parseTableRow(Element row) {
+    private static Program parseTableRow(Element row, FederalProjectLabels projects) {
         Element titleLink = row.selectFirst("a[href^=/programs/]");
         if (titleLink == null) {
             return null;
@@ -170,6 +175,7 @@ public class ProgramParser {
         Program.Builder builder = Program.builder()
                 .id(id)
                 .title(title)
+                .federalProjects(projects.readFrom(row))
                 .url(href);
         
         for (Element cell : row.select("> td")) {
@@ -333,9 +339,9 @@ public class ProgramParser {
     /**
      * Разобрать одну карточку программы.
      */
-    private static Program parseProgramCard(Element card) {
+    private static Program parseProgramCard(Element card, FederalProjectLabels projects) {
         try {
-            Program.Builder builder = Program.builder();
+            Program.Builder builder = Program.builder().federalProjects(projects.readFrom(card));
             
             // ID программы
             String id = extractId(card);

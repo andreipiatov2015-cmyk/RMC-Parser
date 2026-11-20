@@ -1,8 +1,11 @@
 package com.rmc.search.model;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Результат обработки одной отдельной программы, прошедшей фильтр —
@@ -29,6 +32,7 @@ public class ProgramAnalysis {
     private final Map<String, Integer> filteredStats;
     private final String priceCategoryEstimate;
     private final String navigatorUrl;
+    private final List<String> federalProjects;
     private final boolean success;
     private final String errorMessage;
 
@@ -42,6 +46,7 @@ public class ProgramAnalysis {
         this.filteredStats = Map.copyOf(builder.filteredStats);
         this.priceCategoryEstimate = builder.priceCategoryEstimate;
         this.navigatorUrl = builder.navigatorUrl;
+        this.federalProjects = List.copyOf(builder.federalProjects);
         this.success = builder.success;
         this.errorMessage = builder.errorMessage;
     }
@@ -95,6 +100,10 @@ public class ProgramAnalysis {
         return Optional.ofNullable(navigatorUrl);
     }
 
+    public List<String> getFederalProjects() {
+        return federalProjects;
+    }
+
     public boolean isSuccess() {
         return success;
     }
@@ -114,6 +123,7 @@ public class ProgramAnalysis {
         private Map<String, Integer> filteredStats = new LinkedHashMap<>();
         private String priceCategoryEstimate;
         private String navigatorUrl;
+        private final Set<String> federalProjects = new LinkedHashSet<>();
         private boolean success;
         private String errorMessage;
         
@@ -159,6 +169,11 @@ public class ProgramAnalysis {
 
         public Builder navigatorUrl(String navigatorUrl) {
             this.navigatorUrl = navigatorUrl;
+            return this;
+        }
+
+        public Builder addFederalProjects(List<String> projects) {
+            federalProjects.addAll(projects);
             return this;
         }
 
