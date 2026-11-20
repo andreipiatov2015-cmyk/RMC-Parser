@@ -1,6 +1,7 @@
 package com.rmc.search.service;
 
 import com.rmc.logging.AppLogger;
+import com.rmc.parser.FederalProjectLabels;
 import com.rmc.parser.OrganizationStatsParser;
 import com.rmc.parser.ProgramDetailParser;
 import com.rmc.parser.ProgramParser;
@@ -90,6 +91,7 @@ public class ProgramAnalysisService {
     public AnalysisResult analyze(String queryString, ProgressListener listener,
                                    java.util.function.BooleanSupplier isCancelled) {
         List<Program> allPrograms = new ArrayList<>();
+        FederalProjectLabels projects = new FederalProjectLabels();
         
         String nextRelativeUrl = "/programs/" + (queryString != null && !queryString.isEmpty() ? "?" + queryString : "");
         int pageCount = 0;
@@ -114,7 +116,7 @@ public class ProgramAnalysisService {
                         .build();
             }
             
-            ProgramParser.ParseResult parseResult = ProgramParser.parse(pageResult.getHtml());
+            ProgramParser.ParseResult parseResult = ProgramParser.parse(pageResult.getHtml(), projects);
             if (!parseResult.isSuccess()) {
                 logger.error(LOG_PARSE_ERROR, pageCount, parseResult.getErrorMessage().orElse(""));
                 return AnalysisResult.builder()
@@ -164,7 +166,7 @@ public class ProgramAnalysisService {
             List<Program> orgPrograms = programsByOrgId.getOrDefault(
                     org.getId().orElse(""), List.of());
             InstitutionAnalysis analysis = analyzeInstitution(org, orgPrograms, listener, isCancelled,
-                    index, total, allProgramAnalyses);
+                    index, total, allProgramAnalyses, projects);
             institutions.add(analysis);
             
             if (analysis.isSuccess()) {
@@ -239,7 +241,7 @@ public class ProgramAnalysisService {
                                                      ProgressListener listener,
                                                      java.util.function.BooleanSupplier isCancelled,
                                                      int index, int total,
-                                                     List<ProgramAnalysis> programAccumulator) {
+                                                     List<ProgramAnalysis> programAccumulator, FederalProjectLabels projects) {
         String orgId = org.getId().orElse("");
         String orgName = org.getName();
         String orgMunicipality = org.getMunicipality().orElse(null);
@@ -293,6 +295,7 @@ public class ProgramAnalysisService {
                     .organizationName(orgName)
                     .organizationMunicipality(orgMunicipality)
                     .organizationId(orgId)
+                    .addFederalProjects(program.getFederalProjects())
                     .priceCategoryEstimate(priceCategory);
             
             if (programRelativeUrl == null) {
@@ -306,7 +309,7 @@ public class ProgramAnalysisService {
             programBuilder.programUrl(programFullUrl);
             SearchResult programResult = searchService.search(programFullUrl);
             
-            if (!programResult.isSuccess()) {
+            if (!programResult.isSuccess() || programResult.getStatusCode() != 200) {
                 logger.warn(LOG_PROGRAM_FETCH_ERROR, programFullUrl, programResult.getErrorMessage().orElse(""));
                 failedPrograms++;
                 programAccumulator.add(programBuilder.success(false)
@@ -314,12 +317,12 @@ public class ProgramAnalysisService {
                 continue;
             }
             
-            ProgramDetailParser.ParseResult detailResult = ProgramDetailParser.parse(programResult.getHtml());
+            ProgramDetailParser.ParseResult detailResult = ProgramDetailParser.parse(programResult.getHtml(), projects);
             if (!detailResult.isSuccess()) {
                 logger.warn(LOG_PROGRAM_PARSE_ERROR, programFullUrl, detailResult.getErrorMessage().orElse(""));
                 failedPrograms++;
                 programAccumulator.add(programBuilder.success(false)
-                        .errorMessage("Не удалось разобрать страницу программы").build());
+                        .errorMessage(detailResult.getErrorMessage().orElse("Не удалось разобрать страницу программы")).build());
                 continue;
             }
             
@@ -330,6 +333,7 @@ public class ProgramAnalysisService {
             programAccumulator.add(programBuilder
                     .filteredStats(detailResult.getStats())
                     .navigatorUrl(detailResult.getNavigatorUrl().orElse(null))
+                    .addFederalProjects(detailResult.getFederalProjects())
                     .success(true)
                     .build());
         }

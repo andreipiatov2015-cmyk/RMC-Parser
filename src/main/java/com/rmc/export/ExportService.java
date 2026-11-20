@@ -369,6 +369,7 @@ public class ExportService {
         setCell(header, col++, "Ссылка на программу", headerStyle);
         setCell(header, col++, "Навигатор", headerStyle);
         setCell(header, col++, ProgramAnalysis.PRICE_CATEGORY_LABEL, headerStyle);
+        setCell(header, col++, "Федеральные проекты", headerStyle);
         for (String statName : statNames) {
             setCell(header, col++, statName, headerStyle);
         }
@@ -397,6 +398,8 @@ public class ExportService {
             }
 
             setCell(row, col++, program.getPriceCategoryEstimate().orElse(""));
+            List<String> projects = program.getFederalProjects();
+            setCell(row, col++, projects.isEmpty() ? null : String.join(", ", projects));
 
             for (String statName : statNames) {
                 Integer value = program.getFilteredStats().get(statName);
@@ -408,7 +411,7 @@ public class ExportService {
                     : "Ошибка: " + program.getErrorMessage().orElse("не удалось получить данные"));
         }
 
-        autoSizeColumns(sheet, statNames.size() + 6);
+        autoSizeColumns(sheet, header.getLastCellNum());
     }
 
     private static int writeHyperlinkCell(Row row, int col, CreationHelper creationHelper,
